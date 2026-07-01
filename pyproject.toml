@@ -25,3 +25,6 @@ starnews = "starnews.cli:main"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["starnews*"]
+
+[tool.setuptools.package-data]
+starnews = ["web/templates/*.html"]

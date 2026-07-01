@@ -37,20 +37,23 @@ def copy_premiere_template(settings: Settings, date_str: str) -> Path:
 
 
 def print_checklist(day_dir: Path, avatar_name: str, video_path: Path | None) -> None:
+    date_str = day_dir.name
+    prproj = day_dir / f"SN_{date_str}.prproj"
+    video_label = video_path.name if video_path else f"{avatar_name}_{date_str}_1080p.mp4"
     lines = [
         "",
         "=" * 60,
         "StarNews pipeline complete — next steps in Premiere:",
         "=" * 60,
-        f"1. Open project: {day_dir / day_dir.name}.prproj if copied, or SN_*.prproj in {day_dir}",
-        f"2. Replace moderator clip with: {video_path or 'HeyGen export in assets/'}",
+        f"1. Open project: {prproj}",
+        f"2. Replace moderator clip with: assets/{video_label}",
         "3. Swap article images (add Google images as needed)",
         "4. Trim sequence length to match audio",
-        "5. Export:",
-        f"   - TV sequence  -> SN_{day_dir.name}_1   (720p, 50fps sequence export)",
-        f"   - SM sequence  -> SN_{day_dir.name}_SM  (sequence export)",
-        f"   - YT preset    -> SN_{day_dir.name}_YT  (StarNews YT.epr)",
-        "6. Run premiere/starnews_export.jsx in Premiere for batch export",
+        "5. Save project, then run premiere/starnews_export.jsx (File → Scripts)",
+        "6. Exports (Adobe Media Encoder):",
+        f"   - TV: SN_{date_str}_1   (sequence SN_Täglich, 720p 50fps)",
+        f"   - SM: SN_{date_str}_SM  (sequence SN_Social)",
+        f"   - YT: SN_{date_str}_YT  (StarNews YT.epr preset)",
         "7. Send exports to chef via SwissTransfer",
         "=" * 60,
         "",
