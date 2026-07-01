@@ -1,4 +1,8 @@
-# StarNews Daily Pipeline
+# StarTV-Slopautomation
+
+Automation to make my daily work less of a pain. Will probably help future employees cursed with this position.
+
+## StarNews Daily Pipeline
 
 Local Mac automation for StarNews daily production: scrape a Gala.de article, generate script and metadata with Gemini, voice with ElevenLabs, avatar video with HeyGen, and prepare your dated StarTV folder with a copied Premiere project.
 
