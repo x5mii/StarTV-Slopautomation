@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>StarNews Pipeline</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #0f1117;
+      --card: #1a1d27;
+      --border: #2d3348;
+      --text: #e8eaf0;
+      --muted: #9aa3b8;
+      --accent: #5b8cff;
+      --accent-hover: #7aa3ff;
+      --ok: #3ecf8e;
+      --err: #ff6b6b;
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f4f6fb;
+        --card: #ffffff;
+        --border: #d8deea;
+        --text: #1a1f2e;
+        --muted: #5c667a;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .wrap {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 3rem;
+    }
+    h1 {
+      margin: 0 0 0.25rem;
+      font-size: 1.75rem;
+      font-weight: 700;
+    }
+    .subtitle {
+      color: var(--muted);
+      margin-bottom: 1.5rem;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+    }
+    label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 600;
+      margin-bottom: 0.35rem;
+    }
+    input[type="text"], input[type="url"] {
+      width: 100%;
+      padding: 0.65rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: transparent;
+      color: var(--text);
+      font-size: 1rem;
+      margin-bottom: 1rem;
+    }
+    input:focus {
+      outline: 2px solid var(--accent);
+      outline-offset: 1px;
+    }
+    button {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 0.75rem 1.25rem;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+    }
+    button:hover:not(:disabled) { background: var(--accent-hover); }
+    button:disabled { opacity: 0.55; cursor: not-allowed; }
+    .meta {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+      font-size: 0.875rem;
+    }
+    .meta dt { color: var(--muted); margin: 0; }
+    .meta dd { margin: 0.15rem 0 0; font-weight: 600; }
+    .status-pill {
+      display: inline-block;
+      padding: 0.15rem 0.55rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .status-idle { background: var(--border); color: var(--muted); }
+    .status-running { background: #3d4f8a; color: #c8d8ff; }
+    .status-completed { background: #1f5c42; color: var(--ok); }
+    .status-failed { background: #5c2a2a; color: var(--err); }
+    #log {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.8rem;
+      white-space: pre-wrap;
+      max-height: 320px;
+      overflow-y: auto;
+      margin: 0;
+      color: var(--muted);
+    }
+    .error-box {
+      color: var(--err);
+      font-size: 0.875rem;
+      margin-top: 0.75rem;
+      white-space: pre-wrap;
+    }
+    .result-box {
+      margin-top: 0.75rem;
+      font-size: 0.875rem;
+    }
+    .result-box a { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>StarNews Pipeline</h1>
+    <p class="subtitle">Gala.de URL einfügen, Datum wählen, Pipeline starten.</p>
+
+    <div class="card">
+      <dl class="meta">
+        <div>
+          <dt>Nächster Avatar</dt>
+          <dd>{{ next_avatar }}</dd>
+        </div>
+        <div>
+          <dt>Stimme</dt>
+          <dd>{{ next_voice }}</dd>
+        </div>
+        <div>
+          <dt>Letzter Avatar</dt>
+          <dd>{{ last_avatar or "—" }}</dd>
+        </div>
+        <div>
+          <dt>Output</dt>
+          <dd>{{ startv_root }}/DD.MM/</dd>
+        </div>
+      </dl>
+    </div>
+
+    <div class="card">
+      <form id="run-form">
+        <label for="url">Gala.de Artikel-URL</label>
+        <input type="url" id="url" name="url" placeholder="https://www.gala.de/..." required>
+
+        <label for="date">Datum (DD.MM)</label>
+        <input type="text" id="date" name="date" placeholder="01.07" pattern="\d{2}\.\d{2}" required>
+
+        <button type="submit" id="run-btn">Pipeline starten</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.75rem;">
+        <strong>Fortschritt</strong>
+        <span id="status-pill" class="status-pill status-idle">idle</span>
+      </div>
+      <p id="message" style="margin:0 0 0.75rem;color:var(--muted);font-size:0.9rem;"></p>
+      <pre id="log"></pre>
+      <div id="error" class="error-box"></div>
+      <div id="result" class="result-box"></div>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById("run-form");
+    const runBtn = document.getElementById("run-btn");
+    const statusPill = document.getElementById("status-pill");
+    const messageEl = document.getElementById("message");
+    const logEl = document.getElementById("log");
+    const errorEl = document.getElementById("error");
+    const resultEl = document.getElementById("result");
+    let pollTimer = null;
+
+    function todayDDMM() {
+      const d = new Date();
+      const day = String(d.getDate()).padStart(2, "0");
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      return `${day}.${month}`;
+    }
+
+    document.getElementById("date").value = todayDDMM();
+
+    function setStatus(status) {
+      statusPill.textContent = status;
+      statusPill.className = `status-pill status-${status}`;
+    }
+
+    async function pollProgress() {
+      try {
+        const res = await fetch("/api/progress");
+        const data = await res.json();
+        setStatus(data.status);
+        messageEl.textContent = data.message || "";
+        logEl.textContent = (data.log || []).join("\n");
+        logEl.scrollTop = logEl.scrollHeight;
+
+        if (data.error) {
+          errorEl.textContent = data.error;
+        } else {
+          errorEl.textContent = "";
+        }
+
+        if (data.result) {
+          const r = data.result;
+          resultEl.innerHTML = `
+            <strong>Fertig.</strong><br>
+            Ordner: <code>${r.day_dir}</code><br>
+            Avatar: ${r.avatar_name} · Video: ${r.video_path ? r.video_path.split("/").pop() : "—"}
+          `;
+        }
+
+        if (data.status === "running") {
+          runBtn.disabled = true;
+          pollTimer = setTimeout(pollProgress, 2000);
+        } else {
+          runBtn.disabled = false;
+          if (pollTimer) clearTimeout(pollTimer);
+        }
+      } catch (err) {
+        errorEl.textContent = String(err);
+        runBtn.disabled = false;
+      }
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      errorEl.textContent = "";
+      resultEl.textContent = "";
+      runBtn.disabled = true;
+      setStatus("running");
+      messageEl.textContent = "Starte Pipeline...";
+
+      const payload = {
+        url: document.getElementById("url").value.trim(),
+        date: document.getElementById("date").value.trim(),
+      };
+
+      try {
+        const res = await fetch("/api/run", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || "Start fehlgeschlagen");
+        }
+        pollProgress();
+      } catch (err) {
+        setStatus("failed");
+        errorEl.textContent = String(err);
+        runBtn.disabled = false;
+      }
+    });
+
+    pollProgress();
+  </script>
+</body>
+</html>

@@ -1,0 +1,54 @@
+paths:
+  startv_root: /Users/samuel/Documents/StarTV
+  premiere_template: /Users/samuel/Documents/StarTV/Vorlage_Neu Sämi_3.prproj
+  export_preset_yt: /Users/samuel/Documents/Adobe/Adobe Media Encoder/26.0/Presets/StarNews YT.epr
+
+premiere:
+  tv_sequence: SN_Täglich
+  sm_sequence: SN_Social
+  yt_sequence: SN_Täglich
+
+avatars:
+  rotation:
+    - tim
+    - leon
+    - chris
+  tim:
+    display_name: Tim
+    elevenlabs_voice_name: Philip, friendly voice
+    elevenlabs_voice_id: ""  # set in ~/.starnews/.env as ELEVENLABS_VOICE_TIM
+    heygen_template_id: ""   # set as HEYGEN_TEMPLATE_TIM
+  leon:
+    display_name: Leon
+    elevenlabs_voice_name: Odeon
+    elevenlabs_voice_id: ""
+    heygen_template_id: ""
+  chris:
+    display_name: Chris
+    elevenlabs_voice_name: Hans-Peter Lorenz – Modern News Voice
+    elevenlabs_voice_id: ""
+    heygen_template_id: ""
+
+gemini:
+  model: gemini-2.0-flash
+  prompt_file: prompts/gemini_script.txt
+
+elevenlabs:
+  model_id: eleven_multilingual_v2
+  stability: 0.5
+  similarity_boost: 0.75
+  style: 0.0
+  use_speaker_boost: true
+
+heygen:
+  poll_interval_seconds: 15
+  poll_timeout_seconds: 1800
+  dimension:
+    width: 1920
+    height: 1080
+
+web:
+  host: 127.0.0.1
+  port: 8765
+
+state_file: ~/.starnews/state.json
