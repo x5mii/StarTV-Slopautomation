@@ -90,34 +90,77 @@ def run_pipeline(
     *,
     settings: Settings | None = None,
     on_progress: ProgressCallback | None = None,
+    resume: bool = False,
 ) -> PipelineResult:
     settings = settings or load_settings()
     date_str = normalize_date(date_str)
     day_dir = prepare_day_folder(settings, date_str)
     assets_dir = day_dir / "assets"
 
-    _log(f"Scraping Gala.de article: {url}", on_progress)
-    article = scrape_gala(url)
-    save_article_text(article, assets_dir)
-    images = download_images(article.image_urls, assets_dir)
-    _log(f"Saved article text and {len(images)} image(s) to {assets_dir}", on_progress)
+    existing_audio = sorted(assets_dir.glob("ElevenLabs*.mp3")) if assets_dir.exists() else []
+    existing_script = day_dir / "skript.docx"
+    can_resume = resume and existing_script.exists() and existing_audio
 
-    _log("Generating script with Gemini...", on_progress)
-    script_pkg = generate_script(article.text, settings)
-    write_script_outputs(script_pkg, day_dir)
-    _log(f"Script ready: {script_pkg.title}", on_progress)
+    if can_resume:
+        _log("Resume mode: reusing existing script and voice audio", on_progress)
+        from starnews.steps.generate_script import ScriptPackage
+        import json
 
-    avatar_key, avatar = next_avatar(settings)
-    _log(
-        f"Avatar: {avatar.display_name} (voice: {avatar.elevenlabs_voice_name})",
-        on_progress,
-    )
+        meta_path = day_dir / "metadata.json"
+        if meta_path.exists():
+            meta = json.loads(meta_path.read_text(encoding="utf-8"))
+            script_pkg = ScriptPackage(
+                title=meta["title"],
+                caption=meta["caption"],
+                hashtags=meta["hashtags"],
+                script=meta["script"],
+            )
+            article_title = meta.get("title", "")
+        else:
+            script_pkg = ScriptPackage(
+                title="",
+                caption="",
+                hashtags="",
+                script=existing_script.read_text(encoding="utf-8"),
+            )
+            article_title = script_pkg.title
+        article_url = url
+        images = list(assets_dir.glob("*"))
+        image_count = len([p for p in images if p.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp"}])
+        audio_path = existing_audio[-1]
+    else:
+        _log(f"Scraping Gala.de article: {url}", on_progress)
+        article = scrape_gala(url)
+        save_article_text(article, assets_dir)
+        images = download_images(article.image_urls, assets_dir)
+        _log(f"Saved article text and {len(images)} image(s) to {assets_dir}", on_progress)
 
-    _log("Generating voice with ElevenLabs...", on_progress)
-    audio_path = generate_voice(
-        script_pkg.script, avatar, date_str, assets_dir, settings
-    )
-    _log(f"Voice saved: {audio_path.name}", on_progress)
+        _log("Generating script with Gemini...", on_progress)
+        script_pkg = generate_script(article.text, settings)
+        write_script_outputs(script_pkg, day_dir)
+        _log(f"Script ready: {script_pkg.title}", on_progress)
+        article_url = url
+        article_title = article.title
+        image_count = len(images)
+
+        avatar_key, avatar = next_avatar(settings)
+        _log(
+            f"Avatar: {avatar.display_name} (voice: {avatar.elevenlabs_voice_name})",
+            on_progress,
+        )
+
+        _log("Generating voice with ElevenLabs...", on_progress)
+        audio_path = generate_voice(
+            script_pkg.script, avatar, date_str, assets_dir, settings
+        )
+        _log(f"Voice saved: {audio_path.name}", on_progress)
+
+    if can_resume:
+        avatar_key, avatar = next_avatar(settings)
+        _log(
+            f"Avatar: {avatar.display_name} (voice: {avatar.elevenlabs_voice_name})",
+            on_progress,
+        )
 
     _log("Generating avatar video with HeyGen (may take 10–20 min)...", on_progress)
     video_path = generate_avatar_video(
@@ -141,13 +184,13 @@ def run_pipeline(
         avatar_key=avatar_key,
         avatar_name=avatar.display_name,
         voice_name=avatar.elevenlabs_voice_name,
-        article_url=url,
-        article_title=article.title,
+        article_url=article_url,
+        article_title=article_title,
         script_title=script_pkg.title,
         audio_path=audio_path,
         video_path=video_path,
         prproj_path=prproj_path,
-        image_count=len(images),
+        image_count=image_count,
     )
 
     print_checklist(day_dir, avatar.display_name, video_path)

@@ -32,7 +32,7 @@ def _parse_gemini_output(text: str) -> ScriptPackage:
     }
     current = None
     for line in text.splitlines():
-        header = line.strip().upper()
+        header = line.strip().upper().rstrip(":")
         if header in sections:
             current = header
             continue
