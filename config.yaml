@@ -16,17 +16,20 @@ avatars:
   tim:
     display_name: Tim
     elevenlabs_voice_name: Philip, friendly voice
-    elevenlabs_voice_id: ""  # set in ~/.starnews/.env as ELEVENLABS_VOICE_TIM
-    heygen_template_id: ""   # set as HEYGEN_TEMPLATE_TIM
+    elevenlabs_voice_id: ""  # or ELEVENLABS_VOICE_TIM in ~/.starnews/.env
+    heygen_avatar_id: ""     # or HEYGEN_AVATAR_TIM — run: starnews heygen-avatars
+    heygen_template_id: ""   # optional HEYGEN_TEMPLATE_TIM
   leon:
     display_name: Leon
     elevenlabs_voice_name: Odeon
     elevenlabs_voice_id: ""
+    heygen_avatar_id: ""
     heygen_template_id: ""
   chris:
     display_name: Chris
     elevenlabs_voice_name: Hans-Peter Lorenz – Modern News Voice
     elevenlabs_voice_id: ""
+    heygen_avatar_id: ""
     heygen_template_id: ""
 
 gemini:
