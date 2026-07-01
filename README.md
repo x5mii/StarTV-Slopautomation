@@ -49,7 +49,7 @@ Voice mapping (automatic from rotation):
 
 | Avatar | ElevenLabs voice |
 |--------|------------------|
-| Tim | Philip, friendly voice |
+| Tim | Philip |
 | Leon | Odeon |
 | Chris | Hans-Peter Lorenz – Modern News Voice |
 
