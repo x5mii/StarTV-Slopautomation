@@ -15,6 +15,7 @@ class AvatarConfig:
     display_name: str
     elevenlabs_voice_name: str
     elevenlabs_voice_id: str
+    heygen_avatar_id: str
     heygen_template_id: str
 
 
@@ -75,12 +76,14 @@ def load_settings(config_path: Path | None = None) -> Settings:
     for key in rotation:
         entry = avatars_cfg.get(key, {})
         env_voice = os.getenv(f"ELEVENLABS_VOICE_{key.upper()}", "")
+        env_avatar = os.getenv(f"HEYGEN_AVATAR_{key.upper()}", "")
         env_template = os.getenv(f"HEYGEN_TEMPLATE_{key.upper()}", "")
         avatars[key] = AvatarConfig(
             key=key,
             display_name=entry.get("display_name", key.title()),
             elevenlabs_voice_name=entry.get("elevenlabs_voice_name", ""),
             elevenlabs_voice_id=env_voice or entry.get("elevenlabs_voice_id", ""),
+            heygen_avatar_id=env_avatar or entry.get("heygen_avatar_id", ""),
             heygen_template_id=env_template or entry.get("heygen_template_id", ""),
         )
 
