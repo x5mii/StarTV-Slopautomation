@@ -25,7 +25,12 @@ def main() -> None:
 @click.option(
     "--resume",
     is_flag=True,
-    help="Skip steps already done in the dated folder (script + voice exist).",
+    help="Reuse existing script (and voice if present) in the dated folder.",
+)
+@click.option(
+    "--skip-images",
+    is_flag=True,
+    help="Do not download article images — add pictures manually in Premiere.",
 )
 @click.option(
     "--config",
@@ -34,12 +39,12 @@ def main() -> None:
     default=None,
     help="Optional path to config.yaml",
 )
-def run(url: str, date: str, resume: bool, config_path: Path | None) -> None:
+def run(url: str, date: str, resume: bool, skip_images: bool, config_path: Path | None) -> None:
     """Run the full pipeline for a Gala.de URL."""
     settings = load_settings(config_path)
     try:
         result = run_pipeline(
-            url, date, settings=settings, resume=resume
+            url, date, settings=settings, resume=resume, skip_images=skip_images
         )
         save_run_manifest(result.day_dir, result)
         click.echo(f"\nDone. Output folder: {result.day_dir}")
