@@ -23,17 +23,24 @@ def main() -> None:
     help="Production date as DD.MM, e.g. 01.07",
 )
 @click.option(
+    "--resume",
+    is_flag=True,
+    help="Skip steps already done in the dated folder (script + voice exist).",
+)
+@click.option(
     "--config",
     "config_path",
     type=click.Path(exists=True, path_type=Path),
     default=None,
     help="Optional path to config.yaml",
 )
-def run(url: str, date: str, config_path: Path | None) -> None:
+def run(url: str, date: str, resume: bool, config_path: Path | None) -> None:
     """Run the full pipeline for a Gala.de URL."""
     settings = load_settings(config_path)
     try:
-        result = run_pipeline(url, date, settings=settings)
+        result = run_pipeline(
+            url, date, settings=settings, resume=resume
+        )
         save_run_manifest(result.day_dir, result)
         click.echo(f"\nDone. Output folder: {result.day_dir}")
     except Exception as exc:
@@ -78,9 +85,107 @@ def status(config_path: Path | None) -> None:
     for key in settings.avatar_rotation:
         av = settings.avatars[key]
         voice_ok = "set" if av.elevenlabs_voice_id else "MISSING"
-        template_ok = "set" if av.heygen_template_id else "MISSING"
+        avatar_ok = "set" if av.heygen_avatar_id else "MISSING"
+        template_ok = "set" if av.heygen_template_id else "(optional)"
         click.echo(
-            f"  {av.display_name}: voice={voice_ok}, heygen={template_ok}"
+            f"  {av.display_name}: voice={voice_ok}, avatar_look={avatar_ok}, template={template_ok}"
+        )
+
+
+@main.command("heygen-templates")
+@click.option(
+    "--config",
+    "config_path",
+    type=click.Path(exists=True, path_type=Path),
+    default=None,
+    help="Optional path to config.yaml",
+)
+def heygen_templates(config_path: Path | None) -> None:
+    """List HeyGen templates and suggested HEYGEN_TEMPLATE_* env values."""
+    import httpx
+
+    settings = load_settings(config_path)
+    if not settings.heygen_api_key:
+        raise click.ClickException("HEYGEN_API_KEY is not set in ~/.starnews/.env")
+
+    with httpx.Client(timeout=60) as client:
+        response = client.get(
+            "https://api.heygen.com/v2/templates",
+            headers={"X-Api-Key": settings.heygen_api_key},
+        )
+        response.raise_for_status()
+        templates = response.json().get("data", {}).get("templates", [])
+
+    click.echo("HeyGen templates (copy template_id into ~/.starnews/.env):\n")
+    for avatar_key in settings.avatar_rotation:
+        av = settings.avatars[avatar_key]
+        click.echo(f"## {av.display_name} (HEYGEN_TEMPLATE_{avatar_key.upper()})")
+        matches = [
+            t
+            for t in templates
+            if av.display_name.lower() in t.get("name", "").lower()
+            or avatar_key in t.get("name", "").lower()
+            or (avatar_key == "leon" and "leo" in t.get("name", "").lower())
+        ]
+        if not matches:
+            click.echo("  (no matching template found — create/save one in HeyGen UI)\n")
+            continue
+        for t in matches[:5]:
+            click.echo(
+                f"  {t['template_id']}  —  {t.get('name')}  ({t.get('aspect_ratio')})"
+            )
+        click.echo("")
+
+
+@main.command("heygen-avatars")
+@click.option(
+    "--config",
+    "config_path",
+    type=click.Path(exists=True, path_type=Path),
+    default=None,
+    help="Optional path to config.yaml",
+)
+def heygen_avatars(config_path: Path | None) -> None:
+    """List HeyGen avatar look IDs for HEYGEN_AVATAR_* env vars."""
+    import httpx
+
+    settings = load_settings(config_path)
+    if not settings.heygen_api_key:
+        raise click.ClickException("HEYGEN_API_KEY is not set in ~/.starnews/.env")
+
+    with httpx.Client(timeout=120) as client:
+        response = client.get(
+            "https://api.heygen.com/v3/avatars/looks",
+            headers={"X-Api-Key": settings.heygen_api_key},
+        )
+        response.raise_for_status()
+        looks = response.json().get("data", [])
+
+    click.echo("HeyGen avatar looks (copy id into ~/.starnews/.env as HEYGEN_AVATAR_*):\n")
+    for avatar_key in settings.avatar_rotation:
+        av = settings.avatars[avatar_key]
+        env_name = f"HEYGEN_AVATAR_{avatar_key.upper()}"
+        click.echo(f"## {av.display_name} ({env_name})")
+        matches = [
+            look
+            for look in looks
+            if av.display_name.lower() in (look.get("name") or "").lower()
+            or avatar_key in (look.get("name") or "").lower()
+            or (avatar_key == "leon" and "leo" in (look.get("name") or "").lower())
+        ]
+        if not matches:
+            click.echo("  (no name match — check full list below or HeyGen dashboard)\n")
+            continue
+        for look in matches[:5]:
+            click.echo(
+                f"  {look['id']}  —  {look.get('name')}  ({look.get('avatar_type')})"
+            )
+        click.echo("")
+
+    click.echo("All avatar looks in your account:")
+    for look in looks:
+        click.echo(
+            f"  {look['id']}  —  {look.get('name')}  ({look.get('avatar_type')})"
         )
 
 
