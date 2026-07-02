@@ -53,7 +53,17 @@ ELEVENLABS_VOICE_CHRIS=MLFHn2hZ3zKifXrugl26    # Hans-Peter Lorenz
 # HEYGEN_AVATAR_CHRIS=...
 ```
 
-Check:
+Voice mapping (automatic from rotation):
+
+| Avatar | ElevenLabs voice |
+|--------|------------------|
+| Tim | Philip |
+| Leon | Odeon |
+| Chris | Hans-Peter Lorenz – Modern News Voice |
+
+Avatar rotation state is stored in `~/.starnews/state.json` (Tim → Leon → Chris → Tim).
+
+### 3. Verify setup
 
 ```bash
 starnews status
