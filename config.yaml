@@ -1,12 +1,5 @@
 paths:
   startv_root: /Users/samuel/Documents/StarTV
-  premiere_template: /Users/samuel/Documents/StarTV/Vorlage_Neu Sämi_3.prproj
-  export_preset_yt: /Users/samuel/Documents/Adobe/Adobe Media Encoder/26.0/Presets/StarNews YT.epr
-
-premiere:
-  tv_sequence: SN_Täglich
-  sm_sequence: SN_Social
-  yt_sequence: SN_Täglich
 
 avatars:
   rotation:
@@ -18,7 +11,7 @@ avatars:
     elevenlabs_voice_name: Philip, friendly voice
     elevenlabs_voice_id: ""  # or ELEVENLABS_VOICE_TIM in ~/.starnews/.env
     heygen_avatar_id: ""     # or HEYGEN_AVATAR_TIM — run: starnews heygen-avatars
-    heygen_template_id: ""   # optional HEYGEN_TEMPLATE_TIM
+    heygen_template_id: ""   # or HEYGEN_TEMPLATE_TIM — template must have an audio variable
   leon:
     display_name: Leon
     elevenlabs_voice_name: Odeon
@@ -46,6 +39,7 @@ elevenlabs:
 heygen:
   poll_interval_seconds: 15
   poll_timeout_seconds: 1800
+  background_color: "#00B140"  # green screen; used when rendering without a template
   dimension:
     width: 1920
     height: 1080

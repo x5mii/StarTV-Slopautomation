@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -68,42 +67,12 @@ def generate_script(article_text: str, settings: Settings) -> ScriptPackage:
     return _parse_gemini_output(text)
 
 
-def write_script_outputs(package: ScriptPackage, day_dir: Path) -> dict[str, Path]:
+def write_script_docx(package: ScriptPackage, day_dir: Path) -> Path:
     day_dir.mkdir(parents=True, exist_ok=True)
-
     docx_path = day_dir / "skript.docx"
     doc = Document()
     doc.add_paragraph(package.title)
     doc.add_paragraph(f"Caption:{package.caption} {package.hashtags}")
     doc.add_paragraph(package.script)
     doc.save(docx_path)
-
-    metadata = {
-        "title": package.title,
-        "caption": package.caption,
-        "hashtags": package.hashtags,
-        "hashtags_list": package.hashtags_list,
-        "script": package.script,
-    }
-    json_path = day_dir / "metadata.json"
-    json_path.write_text(json.dumps(metadata, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-
-    txt_path = day_dir / "metadata.txt"
-    txt_path.write_text(
-        "\n".join(
-            [
-                f"TITLE: {package.title}",
-                "",
-                f"CAPTION: {package.caption}",
-                "",
-                f"HASHTAGS: {package.hashtags}",
-                "",
-                "SCRIPT:",
-                package.script,
-            ]
-        )
-        + "\n",
-        encoding="utf-8",
-    )
-
-    return {"docx": docx_path, "json": json_path, "txt": txt_path}
+    return docx_path

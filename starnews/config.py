@@ -23,11 +23,6 @@ class AvatarConfig:
 class Settings:
     project_root: Path
     startv_root: Path
-    premiere_template: Path
-    export_preset_yt: Path
-    tv_sequence: str
-    sm_sequence: str
-    yt_sequence: str
     avatars: dict[str, AvatarConfig]
     avatar_rotation: list[str]
     gemini_model: str
@@ -41,6 +36,7 @@ class Settings:
     heygen_poll_timeout: int
     heygen_width: int
     heygen_height: int
+    heygen_background_color: str
     gemini_api_key: str
     elevenlabs_api_key: str
     heygen_api_key: str
@@ -88,7 +84,6 @@ def load_settings(config_path: Path | None = None) -> Settings:
         )
 
     paths = raw.get("paths", {})
-    premiere = raw.get("premiere", {})
     gemini = raw.get("gemini", {})
     elevenlabs = raw.get("elevenlabs", {})
     heygen = raw.get("heygen", {})
@@ -98,24 +93,9 @@ def load_settings(config_path: Path | None = None) -> Settings:
     return Settings(
         project_root=project_root,
         startv_root=_expand(paths.get("startv_root", "~/Documents/StarTV")),
-        premiere_template=_expand(
-            paths.get(
-                "premiere_template",
-                "~/Documents/StarTV/Vorlage_Neu Sämi_3.prproj",
-            )
-        ),
-        export_preset_yt=_expand(
-            paths.get(
-                "export_preset_yt",
-                "~/Documents/Adobe/Adobe Media Encoder/26.0/Presets/StarNews YT.epr",
-            )
-        ),
-        tv_sequence=premiere.get("tv_sequence", "SN_Täglich"),
-        sm_sequence=premiere.get("sm_sequence", "SN_Social"),
-        yt_sequence=premiere.get("yt_sequence", "SN_Täglich"),
         avatars=avatars,
         avatar_rotation=rotation,
-        gemini_model=gemini.get("model", "gemini-2.0-flash"),
+        gemini_model=gemini.get("model", "gemini-2.5-flash"),
         gemini_prompt_file=project_root / gemini.get("prompt_file", "prompts/gemini_script.txt"),
         elevenlabs_model_id=elevenlabs.get("model_id", "eleven_multilingual_v2"),
         elevenlabs_stability=float(elevenlabs.get("stability", 0.5)),
@@ -126,9 +106,10 @@ def load_settings(config_path: Path | None = None) -> Settings:
         heygen_poll_timeout=int(heygen.get("poll_timeout_seconds", 1800)),
         heygen_width=int(dim.get("width", 1920)),
         heygen_height=int(dim.get("height", 1080)),
-        gemini_api_key=os.getenv("GEMINI_API_KEY", ""),
-        elevenlabs_api_key=os.getenv("ELEVENLABS_API_KEY", ""),
-        heygen_api_key=os.getenv("HEYGEN_API_KEY", ""),
+        heygen_background_color=heygen.get("background_color", "#00B140"),
+        gemini_api_key=os.getenv("GEMINI_API_KEY", "").strip(),
+        elevenlabs_api_key=os.getenv("ELEVENLABS_API_KEY", "").strip(),
+        heygen_api_key=os.getenv("HEYGEN_API_KEY", "").strip(),
         state_file=_expand(raw.get("state_file", "~/.starnews/state.json")),
         web_host=web.get("host", "127.0.0.1"),
         web_port=int(web.get("port", 8765)),

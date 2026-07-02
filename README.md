@@ -4,7 +4,17 @@ Automation to make my daily work less of a pain. Will probably help future emplo
 
 ## StarNews Daily Pipeline
 
-Local Mac automation for StarNews daily production: scrape a Gala.de article, generate script and metadata with Gemini, voice with ElevenLabs, avatar video with HeyGen, and prepare your dated StarTV folder with a copied Premiere project.
+Local Mac automation for StarNews daily production: scrape a Gala.de article, generate the script with Gemini, the voice with ElevenLabs, and the moderator video with HeyGen (green background). Pictures and editing/export stay manual.
+
+Output per day — nothing else:
+
+```
+/Users/samuel/Documents/StarTV/03.07/
+  skript.docx
+  assets/
+    ElevenLabs_..._Philip_friendly_voice.mp3
+    Tim_03.07_1080p.mp4
+```
 
 ## Quick start
 
@@ -12,40 +22,23 @@ Local Mac automation for StarNews daily production: scrape a Gala.de article, ge
 
 ```bash
 cd ~/Projects/starnews-pipeline
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -e .
+python3 -m pip install -e .
 ```
 
-### 2. API keys
+### 2. API keys and IDs
 
 Create `~/.starnews/.env` (never commit this file):
-
-```bash
-mkdir -p ~/.starnews
-cp .env.example ~/.starnews/.env
-```
-
-Fill in:
 
 | Variable | Source |
 |----------|--------|
 | `GEMINI_API_KEY` | [Google AI Studio](https://aistudio.google.com/apikey) |
-| `ELEVENLABS_API_KEY` | [ElevenLabs](https://elevenlabs.io/) → Profile → API Key |
-| `HEYGEN_API_KEY` | [HeyGen](https://app.heygen.com/) → Settings → API |
+| `ELEVENLABS_API_KEY` | ElevenLabs → Profile → API Key |
+| `HEYGEN_API_KEY` | HeyGen → Settings → API |
+| `ELEVENLABS_VOICE_TIM/LEON/CHRIS` | ElevenLabs voice IDs |
+| `HEYGEN_AVATAR_TIM/LEON/CHRIS` | run `starnews heygen-avatars` |
+| `HEYGEN_TEMPLATE_TIM/LEON/CHRIS` | optional — run `starnews heygen-templates` |
 
-Optional per-avatar overrides (recommended — copy voice/template IDs from your dashboards):
-
-```env
-ELEVENLABS_VOICE_TIM=...
-ELEVENLABS_VOICE_LEON=...
-ELEVENLABS_VOICE_CHRIS=...
-HEYGEN_TEMPLATE_TIM=...
-HEYGEN_TEMPLATE_LEON=...
-HEYGEN_TEMPLATE_CHRIS=...
-```
-
-Voice mapping (automatic from rotation):
+Voice mapping (automatic from rotation Tim → Leon → Chris):
 
 | Avatar | ElevenLabs voice |
 |--------|------------------|
@@ -53,133 +46,75 @@ Voice mapping (automatic from rotation):
 | Leon | Odeon |
 | Chris | Hans-Peter Lorenz – Modern News Voice |
 
-Avatar rotation state is stored in `~/.starnews/state.json` (Tim → Leon → Chris → Tim).
-
-### 3. Verify setup
+Verify with:
 
 ```bash
 starnews status
 ```
 
-All API keys and avatar voice/template IDs should show as `set`.
+### 3. Green background
 
-## Daily workflow
+Two ways to get the homogeneous green background:
 
-### Option A — CLI (recommended)
+1. **Without template (default):** the video is rendered with your avatar look on a solid green background (`heygen.background_color` in `config.yaml`, default `#00B140`).
+2. **With your HeyGen template:** open the template in HeyGen, mark its **audio element as a variable**, then set `HEYGEN_TEMPLATE_TIM/LEON/CHRIS`. Check which templates are usable with:
 
 ```bash
-starnews run "https://www.gala.de/stars/..." --date 01.07
+starnews heygen-templates
 ```
 
-The pipeline:
+Templates without an audio variable cannot receive the ElevenLabs audio and are skipped automatically (with fallback to the green-background render).
 
-1. Scrapes the article and downloads candidate images to `assets/`
-2. Generates `skript.docx`, `metadata.json`, `metadata.txt` via Gemini
-3. Picks the next avatar (Tim/Leon/Chris) and matching ElevenLabs voice
-4. Renders voice MP3 and HeyGen 1080p avatar video (10–20 min wait)
-5. Copies `Vorlage_Neu Sämi_3.prproj` → `SN_01.07.prproj`
-6. Prints a Premiere checklist
+## Daily usage
 
-Output folder:
+### One video
 
-```
-/Users/samuel/Documents/StarTV/01.07/
-  assets/
-    article.txt
-    ElevenLabs_....mp3
-    Tim_01.07_1080p.mp4
-    [article images]
-  skript.docx
-  metadata.json
-  metadata.txt
-  pipeline.json
-  SN_01.07.prproj
+```bash
+starnews run "https://www.gala.de/stars/..." --date 03.07
 ```
 
-### Option B — Web UI
+### Up to 7 in parallel (whole week)
+
+```bash
+starnews batch \
+  -j 03.07 "https://www.gala.de/....html" \
+  -j 04.07 "https://www.gala.de/....html" \
+  -j 05.07 "https://www.gala.de/....html"
+```
+
+Each date gets the next avatar in rotation automatically (Tim, Leon, Chris, Tim, ...). Failed jobs can be retried individually:
+
+```bash
+starnews run "URL" --date 04.07 --resume
+```
+
+`--resume` reuses the already-generated script (and voice, if present) so you don't pay for Gemini/ElevenLabs again.
+
+### Web UI (single runs)
 
 ```bash
 starnews web
 ```
 
-Open [http://127.0.0.1:8765](http://127.0.0.1:8765), paste the Gala.de URL and date, click **Pipeline starten**. Progress updates every few seconds.
+Open http://127.0.0.1:8765, paste URL + date, start.
 
-### Manual steps in Premiere
+## After the pipeline
 
-1. Open `SN_DD.MM.prproj` from the dated folder
-2. Replace the moderator clip with the HeyGen MP4 in `assets/`
-3. Swap/add images (Google Images for quality picks)
-4. Trim sequence length to match audio
-5. Save the project
-6. Run **File → Scripts → `starnews_export.jsx`** (from `premiere/` in this repo)
+Everything else is manual by design:
 
-The ExtendScript queues three exports in Adobe Media Encoder:
-
-| Output | Source | Filename |
-|--------|--------|----------|
-| TV | Sequence `SN_Täglich` (720p, 50fps) | `SN_DD.MM_1.mp4` |
-| Social | Sequence `SN_Social` | `SN_DD.MM_SM.mp4` |
-| YouTube | Sequence `SN_Täglich` + `StarNews YT.epr` preset | `SN_DD.MM_YT.mp4` |
-
-7. Start exports in Media Encoder
-8. Send files to chef via SwissTransfer
-
-## Configuration
-
-Edit `config.yaml` in the project root for paths, sequence names, Gemini model, and ElevenLabs/HeyGen defaults. Environment variables in `~/.starnews/.env` override voice and HeyGen template IDs.
-
-Key paths (defaults):
-
-- StarTV root: `/Users/samuel/Documents/StarTV`
-- Premiere template: `Vorlage_Neu Sämi_3.prproj`
-- YT preset: `~/Documents/Adobe/Adobe Media Encoder/26.0/Presets/StarNews YT.epr`
+1. Find pictures yourself (Google)
+2. Edit in Premiere, replace moderator with the HeyGen MP4
+3. Export TV / YT / SM yourself
+4. SwissTransfer to chef, then social media
 
 ## Troubleshooting
 
-### `GEMINI_API_KEY is not set`
+**`... is not set` errors** — check `~/.starnews/.env`; lines must not start with `#`. Run `starnews status`.
 
-Create `~/.starnews/.env` with your keys. Run `starnews status` to confirm.
+**Gemini quota (429)** — free tier limit; wait or switch `gemini.model` in `config.yaml`.
 
-### `Could not extract enough article text`
+**HeyGen `Insufficient credit`** — top up API credits at app.heygen.com.
 
-Gala.de may have changed layout. Try a different article URL or check the page loads in a browser. Raw HTML is still attempted via trafilatura.
+**HeyGen timeout while waiting** — the render may still finish; check app.heygen.com and download manually into the day's `assets/` folder, or re-run with `--resume`.
 
-### ElevenLabs / HeyGen voice or template missing
-
-Set `ELEVENLABS_VOICE_TIM` (etc.) and `HEYGEN_TEMPLATE_TIM` (etc.) in `~/.starnews/.env`. Voice IDs are in the ElevenLabs voice library; HeyGen IDs are avatar or template IDs from your HeyGen dashboard.
-
-### HeyGen timeout
-
-Default wait is 30 minutes (`heygen.poll_timeout_seconds` in `config.yaml`). Re-run after checking the HeyGen dashboard if a video completed but the download failed.
-
-### Premiere script cannot find sequences
-
-Open the template project and confirm sequence names are exactly `SN_Täglich` and `SN_Social`. Update `config.yaml` → `premiere` if your names differ.
-
-### YT export fails
-
-Confirm the preset exists at the path in `config.yaml` and matches your Media Encoder version (26.0). Update `YT_PRESET` in `premiere/starnews_export.jsx` if needed.
-
-### Web UI shows "already in progress"
-
-Only one pipeline run at a time. Wait for completion or restart `starnews web`.
-
-## Project layout
-
-```
-starnews-pipeline/
-  config.yaml
-  prompts/gemini_script.txt
-  premiere/starnews_export.jsx
-  starnews/
-    cli.py              # run, web, status
-    pipeline.py         # orchestration
-    config.py
-    rotation.py
-    steps/              # scrape, gemini, elevenlabs, heygen, folder prep
-    web/                # Flask UI
-```
-
-## License
-
-Internal StarNews production tool — not for public distribution.
+**Script/voice regenerated unexpectedly** — cached run data lives in `~/.starnews/runs/DD.MM.json`; `--resume` uses it.

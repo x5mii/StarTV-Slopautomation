@@ -10,19 +10,14 @@ from typing import Callable
 from starnews.config import Settings, load_settings
 from starnews.rotation import mark_avatar_used, next_avatar
 from starnews.steps.generate_avatar import generate_avatar_video
-from starnews.steps.generate_script import ScriptPackage, generate_script, write_script_outputs
+from starnews.steps.generate_script import (
+    ScriptPackage,
+    generate_script,
+    write_script_docx,
+)
 from starnews.steps.generate_voice import generate_voice
-from starnews.steps.prepare_folder import (
-    copy_premiere_template,
-    normalize_date,
-    prepare_day_folder,
-    print_checklist,
-)
-from starnews.steps.scrape_gala import (
-    download_images,
-    save_article_text,
-    scrape_gala,
-)
+from starnews.steps.prepare_folder import normalize_date, prepare_day_folder
+from starnews.steps.scrape_gala import scrape_gala
 
 ProgressCallback = Callable[[str], None]
 
@@ -35,19 +30,16 @@ class PipelineResult:
     avatar_name: str
     voice_name: str
     article_url: str
-    article_title: str
     script_title: str
     audio_path: Path | None = None
     video_path: Path | None = None
-    prproj_path: Path | None = None
-    image_count: int = 0
     completed_at: str = field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat()
     )
 
     def to_dict(self) -> dict:
         data = asdict(self)
-        for key in ("day_dir", "audio_path", "video_path", "prproj_path"):
+        for key in ("day_dir", "audio_path", "video_path"):
             value = data.get(key)
             if value is not None:
                 data[key] = str(value)
@@ -84,25 +76,41 @@ def _log(msg: str, on_progress: ProgressCallback | None) -> None:
         print(msg)
 
 
-def _load_script_package(day_dir: Path) -> tuple[ScriptPackage, str]:
-    from starnews.steps.generate_script import ScriptPackage
-    import json
+def _runs_dir(settings: Settings) -> Path:
+    runs = settings.state_file.parent / "runs"
+    runs.mkdir(parents=True, exist_ok=True)
+    return runs
 
-    meta_path = day_dir / "metadata.json"
-    if meta_path.exists():
-        meta = json.loads(meta_path.read_text(encoding="utf-8"))
-        return (
-            ScriptPackage(
-                title=meta["title"],
-                caption=meta["caption"],
-                hashtags=meta["hashtags"],
-                script=meta["script"],
-            ),
-            meta.get("title", ""),
+
+def _cache_script(settings: Settings, date_str: str, package: ScriptPackage) -> None:
+    path = _runs_dir(settings) / f"{date_str}.json"
+    path.write_text(
+        json.dumps(
+            {
+                "title": package.title,
+                "caption": package.caption,
+                "hashtags": package.hashtags,
+                "script": package.script,
+            },
+            indent=2,
+            ensure_ascii=False,
         )
-    existing_script = day_dir / "skript.docx"
-    script = existing_script.read_text(encoding="utf-8")
-    return ScriptPackage(title="", caption="", hashtags="", script=script), ""
+        + "\n",
+        encoding="utf-8",
+    )
+
+
+def _load_cached_script(settings: Settings, date_str: str) -> ScriptPackage | None:
+    path = _runs_dir(settings) / f"{date_str}.json"
+    if not path.exists():
+        return None
+    meta = json.loads(path.read_text(encoding="utf-8"))
+    return ScriptPackage(
+        title=meta["title"],
+        caption=meta["caption"],
+        hashtags=meta["hashtags"],
+        script=meta["script"],
+    )
 
 
 def run_pipeline(
@@ -112,60 +120,43 @@ def run_pipeline(
     settings: Settings | None = None,
     on_progress: ProgressCallback | None = None,
     resume: bool = False,
-    skip_images: bool = False,
+    avatar_key: str | None = None,
 ) -> PipelineResult:
     settings = settings or load_settings()
     date_str = normalize_date(date_str)
     day_dir = prepare_day_folder(settings, date_str)
     assets_dir = day_dir / "assets"
 
-    existing_audio = sorted(assets_dir.glob("ElevenLabs*.mp3")) if assets_dir.exists() else []
-    existing_script = day_dir / "skript.docx"
-    resume_script = resume and existing_script.exists()
-    resume_audio = resume and bool(existing_audio)
-
-    if resume_script:
-        script_pkg, article_title = _load_script_package(day_dir)
-        article_url = url
-        image_count = len(
-            [
-                p
-                for p in assets_dir.glob("*")
-                if p.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp", ".avif"}
-            ]
-        )
-        if resume_audio:
-            _log("Resume mode: reusing existing script and voice audio", on_progress)
-            audio_path = existing_audio[-1]
-        else:
-            _log("Resume mode: reusing script, generating voice", on_progress)
+    script_pkg = _load_cached_script(settings, date_str) if resume else None
+    if script_pkg is not None:
+        _log("Resume mode: reusing existing script", on_progress)
+        write_script_docx(script_pkg, day_dir)
     else:
         _log(f"Scraping Gala.de article: {url}", on_progress)
         article = scrape_gala(url)
-        save_article_text(article, assets_dir)
-        if skip_images:
-            _log("Skipping automatic image download (add pictures manually in Premiere)", on_progress)
-            images = []
-        else:
-            images = download_images(article.image_urls, assets_dir)
-            _log(f"Saved article text and {len(images)} image(s) to {assets_dir}", on_progress)
 
         _log("Generating script with Gemini...", on_progress)
         script_pkg = generate_script(article.text, settings)
-        write_script_outputs(script_pkg, day_dir)
+        write_script_docx(script_pkg, day_dir)
+        _cache_script(settings, date_str, script_pkg)
         _log(f"Script ready: {script_pkg.title}", on_progress)
-        article_url = url
-        article_title = article.title
-        image_count = len(images)
-        resume_audio = False
 
-    avatar_key, avatar = next_avatar(settings)
+    if avatar_key is not None:
+        avatar = settings.avatars[avatar_key]
+        rotation_managed = False
+    else:
+        avatar_key, avatar = next_avatar(settings)
+        rotation_managed = True
     _log(
         f"Avatar: {avatar.display_name} (voice: {avatar.elevenlabs_voice_name})",
         on_progress,
     )
 
-    if not resume_audio:
+    existing_audio = sorted(assets_dir.glob("ElevenLabs*.mp3"))
+    if resume and existing_audio:
+        audio_path = existing_audio[-1]
+        _log(f"Reusing voice audio: {audio_path.name}", on_progress)
+    else:
         _log("Generating voice with ElevenLabs...", on_progress)
         audio_path = generate_voice(
             script_pkg.script, avatar, date_str, assets_dir, settings
@@ -181,12 +172,9 @@ def run_pipeline(
         settings,
         on_progress=lambda msg: _log(msg, on_progress),
     )
-    mark_avatar_used(settings, avatar_key)
+    if rotation_managed:
+        mark_avatar_used(settings, avatar_key)
     _log(f"HeyGen video saved: {video_path.name}", on_progress)
-
-    _log("Copying Premiere template...", on_progress)
-    prproj_path = copy_premiere_template(settings, date_str)
-    _log(f"Premiere project: {prproj_path.name}", on_progress)
 
     result = PipelineResult(
         date=date_str,
@@ -194,16 +182,13 @@ def run_pipeline(
         avatar_key=avatar_key,
         avatar_name=avatar.display_name,
         voice_name=avatar.elevenlabs_voice_name,
-        article_url=article_url,
-        article_title=article_title,
+        article_url=url,
         script_title=script_pkg.title,
         audio_path=audio_path,
         video_path=video_path,
-        prproj_path=prproj_path,
-        image_count=image_count,
     )
 
-    print_checklist(day_dir, avatar.display_name, video_path)
+    _log(f"Done: {day_dir} (skript.docx + assets/)", on_progress)
     return result
 
 
@@ -228,9 +213,65 @@ def run_pipeline_tracked(
 
 
 def save_run_manifest(day_dir: Path, result: PipelineResult) -> Path:
-    manifest_path = day_dir / "pipeline.json"
+    """Persist the run manifest in the state dir (keeps the date folder clean)."""
+    settings = load_settings()
+    manifest_path = _runs_dir(settings) / f"{result.date}_manifest.json"
     manifest_path.write_text(
         json.dumps(result.to_dict(), indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
     )
     return manifest_path
+
+
+def run_batch(
+    jobs: list[tuple[str, str]],
+    *,
+    settings: Settings | None = None,
+    max_workers: int = 7,
+) -> list[tuple[str, PipelineResult | None, str | None]]:
+    """Run several (date, url) jobs in parallel with pre-assigned avatar rotation.
+
+    Returns a list of (date, result_or_None, error_or_None).
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    from starnews.rotation import load_state, save_state
+
+    settings = settings or load_settings()
+    jobs = [(normalize_date(date), url) for date, url in jobs]
+
+    rotation = settings.avatar_rotation
+    state = load_state(settings)
+    last = state.get("last_avatar")
+    start_idx = (rotation.index(last) + 1) % len(rotation) if last in rotation else 0
+    assignments = {
+        date: rotation[(start_idx + i) % len(rotation)]
+        for i, (date, _) in enumerate(jobs)
+    }
+    state["last_avatar"] = rotation[(start_idx + len(jobs) - 1) % len(rotation)]
+    save_state(settings, state)
+
+    results: list[tuple[str, PipelineResult | None, str | None]] = []
+
+    def worker(date: str, url: str) -> tuple[str, PipelineResult | None, str | None]:
+        prefix = f"[{date}]"
+        try:
+            result = run_pipeline(
+                url,
+                date,
+                settings=settings,
+                on_progress=lambda msg: print(f"{prefix} {msg}"),
+                avatar_key=assignments[date],
+            )
+            return date, result, None
+        except Exception as exc:
+            print(f"{prefix} FAILED: {exc}")
+            return date, None, str(exc)
+
+    with ThreadPoolExecutor(max_workers=min(max_workers, len(jobs))) as pool:
+        futures = [pool.submit(worker, date, url) for date, url in jobs]
+        for future in as_completed(futures):
+            results.append(future.result())
+
+    results.sort(key=lambda item: item[0])
+    return results
