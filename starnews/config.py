@@ -17,6 +17,7 @@ class AvatarConfig:
     elevenlabs_voice_id: str
     heygen_avatar_id: str
     heygen_template_id: str
+    heygen_draft_name: str
 
 
 @dataclass
@@ -32,11 +33,13 @@ class Settings:
     elevenlabs_similarity_boost: float
     elevenlabs_style: float
     elevenlabs_use_speaker_boost: bool
+    heygen_mode: str
     heygen_poll_interval: int
     heygen_poll_timeout: int
     heygen_width: int
     heygen_height: int
     heygen_background_color: str
+    heygen_fit: str
     gemini_api_key: str
     elevenlabs_api_key: str
     heygen_api_key: str
@@ -71,16 +74,17 @@ def load_settings(config_path: Path | None = None) -> Settings:
     avatars: dict[str, AvatarConfig] = {}
     for key in rotation:
         entry = avatars_cfg.get(key, {})
-        env_voice = os.getenv(f"ELEVENLABS_VOICE_{key.upper()}", "")
+        env_el_voice = os.getenv(f"ELEVENLABS_VOICE_{key.upper()}", "")
         env_avatar = os.getenv(f"HEYGEN_AVATAR_{key.upper()}", "")
         env_template = os.getenv(f"HEYGEN_TEMPLATE_{key.upper()}", "")
         avatars[key] = AvatarConfig(
             key=key,
             display_name=entry.get("display_name", key.title()),
             elevenlabs_voice_name=entry.get("elevenlabs_voice_name", ""),
-            elevenlabs_voice_id=env_voice or entry.get("elevenlabs_voice_id", ""),
+            elevenlabs_voice_id=env_el_voice or entry.get("elevenlabs_voice_id", ""),
             heygen_avatar_id=env_avatar or entry.get("heygen_avatar_id", ""),
             heygen_template_id=env_template or entry.get("heygen_template_id", ""),
+            heygen_draft_name=entry.get("heygen_draft_name", ""),
         )
 
     paths = raw.get("paths", {})
@@ -102,11 +106,13 @@ def load_settings(config_path: Path | None = None) -> Settings:
         elevenlabs_similarity_boost=float(elevenlabs.get("similarity_boost", 0.75)),
         elevenlabs_style=float(elevenlabs.get("style", 0.0)),
         elevenlabs_use_speaker_boost=bool(elevenlabs.get("use_speaker_boost", True)),
+        heygen_mode=str(heygen.get("mode", "manual")).lower(),
         heygen_poll_interval=int(heygen.get("poll_interval_seconds", 15)),
         heygen_poll_timeout=int(heygen.get("poll_timeout_seconds", 1800)),
         heygen_width=int(dim.get("width", 1920)),
         heygen_height=int(dim.get("height", 1080)),
         heygen_background_color=heygen.get("background_color", "#00B140"),
+        heygen_fit=str(heygen.get("fit", "cover")),
         gemini_api_key=os.getenv("GEMINI_API_KEY", "").strip(),
         elevenlabs_api_key=os.getenv("ELEVENLABS_API_KEY", "").strip(),
         heygen_api_key=os.getenv("HEYGEN_API_KEY", "").strip(),

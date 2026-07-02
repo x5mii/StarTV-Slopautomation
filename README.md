@@ -1,22 +1,31 @@
 # StarTV-Slopautomation
 
-Automation to make my daily work less of a pain. Will probably help future employees cursed with this position.
+Automation for daily StarNews production on Mac.
 
-## StarNews Daily Pipeline
+## What it does
 
-Local Mac automation for StarNews daily production: scrape a Gala.de article, generate the script with Gemini, the voice with ElevenLabs, and the moderator video with HeyGen (green background). Pictures and editing/export stay manual.
+| Step | Tool | Automated? |
+|------|------|------------|
+| Scrape Gala.de article | pipeline | yes |
+| Script, title, caption, hashtags | Gemini | yes |
+| Moderator voice (Philip / Odeon / Hans-Peter) | ElevenLabs | yes |
+| Moderator video (draft look + lip-sync) | HeyGen | **manual** (default) or optional API |
 
-Output per day — nothing else:
+Pictures, Premiere editing, and exports stay manual.
+
+## Output folder
+
+After `starnews run`, you get:
 
 ```
 /Users/samuel/Documents/StarTV/03.07/
   skript.docx
   assets/
-    ElevenLabs_..._Philip_friendly_voice.mp3
-    Tim_03.07_1080p.mp4
+    ElevenLabs_2026_07_02T..._Philip_friendly_voice.mp3
+    Tim_03.07_1080p.mp4          ← you add this after HeyGen
 ```
 
-## Quick start
+## Setup
 
 ### 1. Install
 
@@ -25,96 +34,103 @@ cd ~/Projects/starnews-pipeline
 python3 -m pip install -e .
 ```
 
-### 2. API keys and IDs
+### 2. API keys
 
-Create `~/.starnews/.env` (never commit this file):
+Create `~/.starnews/.env` (never commit):
 
-| Variable | Source |
-|----------|--------|
-| `GEMINI_API_KEY` | [Google AI Studio](https://aistudio.google.com/apikey) |
-| `ELEVENLABS_API_KEY` | ElevenLabs → Profile → API Key |
-| `HEYGEN_API_KEY` | HeyGen → Settings → API |
-| `ELEVENLABS_VOICE_TIM/LEON/CHRIS` | ElevenLabs voice IDs |
-| `HEYGEN_AVATAR_TIM/LEON/CHRIS` | run `starnews heygen-avatars` |
-| `HEYGEN_TEMPLATE_TIM/LEON/CHRIS` | optional — run `starnews heygen-templates` |
+```env
+GEMINI_API_KEY=...
+ELEVENLABS_API_KEY=...
 
-Voice mapping (automatic from rotation Tim → Leon → Chris):
+ELEVENLABS_VOICE_TIM=m0jFDzIcZy0rC88oAehX      # Philip, friendly voice
+ELEVENLABS_VOICE_LEON=XJ6WvkWn5AiImouUWf8S      # Odeon
+ELEVENLABS_VOICE_CHRIS=MLFHn2hZ3zKifXrugl26    # Hans-Peter Lorenz
 
-| Avatar | ElevenLabs voice |
-|--------|------------------|
-| Tim | Philip, friendly voice |
-| Leon | Odeon |
-| Chris | Hans-Peter Lorenz – Modern News Voice |
+# Only needed for heygen.mode: auto (not recommended):
+# HEYGEN_API_KEY=...
+# HEYGEN_AVATAR_TIM=...
+# HEYGEN_AVATAR_LEON=...
+# HEYGEN_AVATAR_CHRIS=...
+```
 
-Verify with:
+Check:
 
 ```bash
 starnews status
 ```
 
-### 3. Green background
+### 3. HeyGen mode
 
-Two ways to get the homogeneous green background:
+In `config.yaml`:
 
-1. **Without template (default):** the video is rendered with your avatar look on a solid green background (`heygen.background_color` in `config.yaml`, default `#00B140`).
-2. **With your HeyGen template:** open the template in HeyGen, mark its **audio element as a variable**, then set `HEYGEN_TEMPLATE_TIM/LEON/CHRIS`. Check which templates are usable with:
-
-```bash
-starnews heygen-templates
+```yaml
+heygen:
+  mode: manual   # recommended
 ```
 
-Templates without an audio variable cannot receive the ElevenLabs audio and are skipped automatically (with fallback to the green-background render).
+**Manual (default)** — pipeline stops after ElevenLabs. You finish the video in HeyGen (correct draft look + voice).
 
-## Daily usage
+**Auto** — pipeline calls HeyGen API with your MP3. Often wrong outfit/framing; use only if you accept that trade-off.
 
-### One video
+## Daily workflow
 
-```bash
-starnews run "https://www.gala.de/stars/..." --date 03.07
-```
-
-### Up to 7 in parallel (whole week)
+### Run the pipeline
 
 ```bash
-starnews batch \
-  -j 03.07 "https://www.gala.de/....html" \
-  -j 04.07 "https://www.gala.de/....html" \
-  -j 05.07 "https://www.gala.de/....html"
+starnews run "https://www.gala.de/stars/....html" --date 03.07
 ```
 
-Each date gets the next avatar in rotation automatically (Tim, Leon, Chris, Tim, ...). Failed jobs can be retried individually:
+Avatar rotation is automatic: Tim → Leon → Chris → repeat.
 
 ```bash
-starnews run "URL" --date 04.07 --resume
+starnews run "URL" --date 03.07 --resume    # reuse script + MP3
+starnews batch -j 03.07 URL1 -j 04.07 URL2   # up to 7 parallel
+starnews web                                 # http://127.0.0.1:8765
 ```
 
-`--resume` reuses the already-generated script (and voice, if present) so you don't pay for Gemini/ElevenLabs again.
+### Finish in HeyGen (manual mode)
 
-### Web UI (single runs)
+The pipeline prints which avatar and MP3 to use. Steps:
 
-```bash
-starnews web
-```
+1. Open [app.heygen.com](https://app.heygen.com)
+2. Open **your draft** for today's avatar:
 
-Open http://127.0.0.1:8765, paste URL + date, start.
+   | Avatar | Draft name (in `config.yaml`) |
+   |--------|-------------------------------|
+   | Tim | Tim 02.07 |
+   | Leon | Leo 30.06 |
+   | Chris | Chris_01.07 |
 
-## After the pipeline
+3. In the **Script** panel, choose **Upload Audio** (not typed script)
+4. Select the ElevenLabs MP3 from that day's `assets/` folder
+5. Click **Generate** / **Submit**
+6. Download the MP4 and save as `{Avatar}_{date}_1080p.mp4` in the same `assets/` folder  
+   Example: `Tim_03.07_1080p.mp4`
 
-Everything else is manual by design:
+This matches your old workflow: draft look, ElevenLabs voice, green background.
 
-1. Find pictures yourself (Google)
-2. Edit in Premiere, replace moderator with the HeyGen MP4
-3. Export TV / YT / SM yourself
-4. SwissTransfer to chef, then social media
+### After that (manual)
+
+1. Find pictures (Google)
+2. Edit in Premiere — replace moderator clip with the HeyGen MP4
+3. Export TV / YT / SM
+4. SwissTransfer + social posts
 
 ## Troubleshooting
 
-**`... is not set` errors** — check `~/.starnews/.env`; lines must not start with `#`. Run `starnews status`.
+**`ELEVENLABS_VOICE_* is not set`** — uncomment lines in `~/.starnews/.env`, run `starnews status`.
 
-**Gemini quota (429)** — free tier limit; wait or switch `gemini.model` in `config.yaml`.
+**Gemini parse error** — re-run the same command; the pipeline retries with stricter formatting. Use `--resume` after a successful script to avoid paying twice.
 
-**HeyGen `Insufficient credit`** — top up API credits at app.heygen.com.
+**Gemini 429** — wait or set `gemini.model: gemini-2.5-flash` in `config.yaml`.
 
-**HeyGen timeout while waiting** — the render may still finish; check app.heygen.com and download manually into the day's `assets/` folder, or re-run with `--resume`.
+**HeyGen auto mode looks wrong** — set `heygen.mode: manual` and use the steps above.
 
-**Script/voice regenerated unexpectedly** — cached run data lives in `~/.starnews/runs/DD.MM.json`; `--resume` uses it.
+**Helper commands**
+
+```bash
+starnews status
+starnews heygen-avatars    # look IDs for auto mode
+starnews heygen-templates  # templates with audio placeholders for auto mode
+starnews heygen-voices     # optional voice override list
+```

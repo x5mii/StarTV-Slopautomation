@@ -25,7 +25,7 @@ def main() -> None:
 @click.option(
     "--resume",
     is_flag=True,
-    help="Reuse the script (and voice if present) already generated for this date.",
+    help="Reuse cached script and ElevenLabs MP3 if already generated for this date.",
 )
 @click.option(
     "--config",
@@ -121,21 +121,24 @@ def status(config_path: Path | None) -> None:
     click.echo(f"State file:        {settings.state_file}")
     click.echo(f"Last avatar:       {state.get('last_avatar') or '(none)'}")
     click.echo(f"Next avatar:       {next_av.display_name} ({next_key})")
-    click.echo(f"Next voice:        {next_av.elevenlabs_voice_name}")
+    click.echo(f"Next ElevenLabs:   {next_av.elevenlabs_voice_name}")
+    click.echo(f"HeyGen mode:       {settings.heygen_mode}")
     click.echo("")
     click.echo("API keys:")
     for name, ok in keys_ok.items():
         click.echo(f"  {name}: {'set' if ok else 'MISSING'}")
     click.echo("")
-    click.echo("Avatar IDs:")
+    click.echo("Avatar setup:")
     for key in settings.avatar_rotation:
         av = settings.avatars[key]
-        voice_ok = "set" if av.elevenlabs_voice_id else "MISSING"
-        avatar_ok = "set" if av.heygen_avatar_id else "MISSING"
-        template_ok = "set" if av.heygen_template_id else "(not set)"
+        el_ok = "set" if av.elevenlabs_voice_id else "MISSING"
+        avatar_ok = "set" if av.heygen_avatar_id else "(manual mode ok)"
+        draft = av.heygen_draft_name or "(set heygen_draft_name in config.yaml)"
         click.echo(
-            f"  {av.display_name}: voice={voice_ok}, avatar_look={avatar_ok}, template={template_ok}"
+            f"  {av.display_name}: elevenlabs={el_ok}, heygen_draft={draft}"
         )
+        if settings.heygen_mode == "auto":
+            click.echo(f"    avatar_look={avatar_ok}")
 
 
 @main.command("heygen-templates")
@@ -147,12 +150,18 @@ def status(config_path: Path | None) -> None:
     help="Optional path to config.yaml",
 )
 def heygen_templates(config_path: Path | None) -> None:
-    """List HeyGen templates and whether they can accept pipeline audio."""
+    """List HeyGen templates and whether the API can inject a new script."""
     import httpx
 
     settings = load_settings(config_path)
     if not settings.heygen_api_key:
         raise click.ClickException("HEYGEN_API_KEY is not set in ~/.starnews/.env")
+
+    configured = {
+        av.heygen_template_id: av.display_name
+        for av in settings.avatars.values()
+        if av.heygen_template_id
+    }
 
     headers = {"X-Api-Key": settings.heygen_api_key}
     with httpx.Client(timeout=60) as client:
@@ -160,7 +169,7 @@ def heygen_templates(config_path: Path | None) -> None:
         response.raise_for_status()
         templates = response.json().get("data", {}).get("templates", [])
 
-        click.echo("HeyGen templates (usable = has an audio variable):\n")
+        click.echo("HeyGen templates ([USABLE] = has an audio placeholder for ElevenLabs MP3):\n")
         for t in templates[:30]:
             detail = client.get(
                 f"https://api.heygen.com/v2/template/{t['template_id']}",
@@ -174,11 +183,131 @@ def heygen_templates(config_path: Path | None) -> None:
                 for v in variables.values()
             )
             marker = "USABLE " if has_audio else "no-audio"
-            click.echo(f"  [{marker}] {t['template_id']}  —  {t.get('name')}")
+            suffix = ""
+            if t["template_id"] in configured:
+                suffix = f"  ← {configured[t['template_id']]} (configured)"
+            click.echo(f"  [{marker}] {t['template_id']}  —  {t.get('name')}{suffix}")
 
     click.echo(
-        "\nTo use a template: open it in HeyGen, mark its audio element as a "
-        "variable, then set HEYGEN_TEMPLATE_TIM/LEON/CHRIS in ~/.starnews/.env."
+        "\nFor heygen.mode: auto — [USABLE] templates keep draft look with your ElevenLabs audio."
+        "\nManual mode (default) skips the API; upload the MP3 in your HeyGen draft instead."
+    )
+
+
+def _parse_heygen_voices_payload(data: object) -> list[dict]:
+    if isinstance(data, list):
+        return data
+    if isinstance(data, dict):
+        voices = data.get("voices")
+        if isinstance(voices, list):
+            return voices
+    return []
+
+
+def _fetch_heygen_voices(
+    client: httpx.Client,
+    headers: dict[str, str],
+    params: dict[str, str | int],
+) -> list[dict]:
+    voices: list[dict] = []
+    token: str | None = None
+    while True:
+        query = dict(params)
+        if token:
+            query["token"] = token
+        response = client.get(
+            "https://api.heygen.com/v3/voices",
+            headers=headers,
+            params=query,
+        )
+        response.raise_for_status()
+        body = response.json()
+        data = body.get("data")
+        voices.extend(_parse_heygen_voices_payload(data))
+        if isinstance(data, dict) and data.get("has_more") and data.get("next_token"):
+            token = data["next_token"]
+            continue
+        break
+    return voices
+
+
+def _voice_id(voice: dict) -> str:
+    return str(voice.get("voice_id") or voice.get("id") or "")
+
+
+@main.command("heygen-voices")
+@click.option(
+    "--language",
+    default="German",
+    show_default=True,
+    help="Filter voices by language (e.g. German, English).",
+)
+@click.option(
+    "--config",
+    "config_path",
+    type=click.Path(exists=True, path_type=Path),
+    default=None,
+    help="Optional path to config.yaml",
+)
+def heygen_voices(language: str, config_path: Path | None) -> None:
+    """List HeyGen voices (optional — only if you want to override the default look voice)."""
+    import httpx
+
+    settings = load_settings(config_path)
+    if not settings.heygen_api_key:
+        raise click.ClickException("HEYGEN_API_KEY is not set in ~/.starnews/.env")
+
+    headers = {"X-Api-Key": settings.heygen_api_key}
+    params: dict[str, str | int] = {"language": language, "limit": 100}
+    with httpx.Client(timeout=60) as client:
+        voices = _fetch_heygen_voices(client, headers, params)
+
+    click.echo(f"HeyGen voices ({language}) — copy voice_id into ~/.starnews/.env:\n")
+    for avatar_key in settings.avatar_rotation:
+        av = settings.avatars[avatar_key]
+        env_name = f"HEYGEN_VOICE_{avatar_key.upper()}"
+        click.echo(f"## {av.display_name} ({env_name})")
+        name_hint = av.display_name.lower()
+        if avatar_key == "leon":
+            matches = [
+                v
+                for v in voices
+                if name_hint in (v.get("name") or "").lower()
+                or "leo" in (v.get("name") or "").lower()
+                or "odeon" in (v.get("name") or "").lower()
+            ]
+        elif avatar_key == "tim":
+            matches = [
+                v
+                for v in voices
+                if "philip" in (v.get("name") or "").lower()
+                or name_hint in (v.get("name") or "").lower()
+            ]
+        else:
+            matches = [
+                v
+                for v in voices
+                if "hans" in (v.get("name") or "").lower()
+                or "lorenz" in (v.get("name") or "").lower()
+                or name_hint in (v.get("name") or "").lower()
+            ]
+        if not matches:
+            click.echo("  (no name match — pick from full list below)\n")
+            continue
+        for voice in matches[:5]:
+            click.echo(
+                f"  {_voice_id(voice)}  —  {voice.get('name')}  ({voice.get('gender')})"
+            )
+        click.echo("")
+
+    click.echo(f"All {language} voices:")
+    for voice in voices:
+        click.echo(
+            f"  {_voice_id(voice)}  —  {voice.get('name')}  ({voice.get('gender')})"
+        )
+    click.echo(
+        f"\nOptional override only — leave HEYGEN_VOICE_* unset to use each avatar look's voice."
+        "\nSet HEYGEN_VOICE_TIM/LEON/CHRIS only if the default sound is wrong."
     )
 
 

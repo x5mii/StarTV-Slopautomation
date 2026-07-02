@@ -84,6 +84,7 @@ def create_app(settings: Settings) -> Flask:
                 "next_avatar": next_av.display_name,
                 "next_avatar_key": next_key,
                 "next_voice": next_av.elevenlabs_voice_name,
+                "heygen_mode": settings.heygen_mode,
                 "startv_root": str(settings.startv_root),
                 "keys": {
                     "gemini": bool(settings.gemini_api_key),

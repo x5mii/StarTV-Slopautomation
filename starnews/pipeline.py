@@ -148,7 +148,7 @@ def run_pipeline(
         avatar_key, avatar = next_avatar(settings)
         rotation_managed = True
     _log(
-        f"Avatar: {avatar.display_name} (voice: {avatar.elevenlabs_voice_name})",
+        f"Avatar: {avatar.display_name} (ElevenLabs: {avatar.elevenlabs_voice_name})",
         on_progress,
     )
 
@@ -163,7 +163,11 @@ def run_pipeline(
         )
         _log(f"Voice saved: {audio_path.name}", on_progress)
 
-    _log("Generating avatar video with HeyGen (may take 10–20 min)...", on_progress)
+    if settings.heygen_mode == "manual":
+        _log("HeyGen: manual mode — skipping API render", on_progress)
+    else:
+        _log("Generating avatar video with HeyGen (may take 10–20 min)...", on_progress)
+
     video_path = generate_avatar_video(
         audio_path,
         avatar,
@@ -172,9 +176,19 @@ def run_pipeline(
         settings,
         on_progress=lambda msg: _log(msg, on_progress),
     )
+
+    if video_path is not None:
+        _log(f"HeyGen video saved: {video_path.name}", on_progress)
+    else:
+        draft = avatar.heygen_draft_name.strip() or f"{avatar.display_name} draft"
+        _log(
+            f"HeyGen manual: open \"{draft}\", upload {audio_path.name}, "
+            f"save {avatar.display_name}_{date_str}_1080p.mp4 → assets/ (README)",
+            on_progress,
+        )
+
     if rotation_managed:
         mark_avatar_used(settings, avatar_key)
-    _log(f"HeyGen video saved: {video_path.name}", on_progress)
 
     result = PipelineResult(
         date=date_str,
@@ -188,7 +202,12 @@ def run_pipeline(
         video_path=video_path,
     )
 
-    _log(f"Done: {day_dir} (skript.docx + assets/)", on_progress)
+    suffix = (
+        "skript.docx + ElevenLabs MP3 (HeyGen step: see README)"
+        if video_path is None
+        else "skript.docx + assets/"
+    )
+    _log(f"Done: {day_dir} ({suffix})", on_progress)
     return result
 
 

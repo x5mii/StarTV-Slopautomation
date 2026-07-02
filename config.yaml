@@ -9,21 +9,15 @@ avatars:
   tim:
     display_name: Tim
     elevenlabs_voice_name: Philip, friendly voice
-    elevenlabs_voice_id: ""  # or ELEVENLABS_VOICE_TIM in ~/.starnews/.env
-    heygen_avatar_id: ""     # or HEYGEN_AVATAR_TIM — run: starnews heygen-avatars
-    heygen_template_id: ""   # or HEYGEN_TEMPLATE_TIM — template must have an audio variable
+    heygen_draft_name: Tim 02.07
   leon:
     display_name: Leon
     elevenlabs_voice_name: Odeon
-    elevenlabs_voice_id: ""
-    heygen_avatar_id: ""
-    heygen_template_id: ""
+    heygen_draft_name: Leo 30.06
   chris:
     display_name: Chris
     elevenlabs_voice_name: Hans-Peter Lorenz – Modern News Voice
-    elevenlabs_voice_id: ""
-    heygen_avatar_id: ""
-    heygen_template_id: ""
+    heygen_draft_name: Chris_01.07
 
 gemini:
   model: gemini-2.5-flash
@@ -37,9 +31,13 @@ elevenlabs:
   use_speaker_boost: true
 
 heygen:
+  # manual = pipeline stops after ElevenLabs; you upload MP3 in HeyGen (best draft look)
+  # auto   = pipeline tries HeyGen API lip-sync (may not match draft framing)
+  mode: manual
   poll_interval_seconds: 15
   poll_timeout_seconds: 1800
-  background_color: "#00B140"  # green screen; used when rendering without a template
+  background_color: "#00B140"
+  fit: cover
   dimension:
     width: 1920
     height: 1080
