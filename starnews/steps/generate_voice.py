@@ -10,12 +10,12 @@ from starnews.config import AvatarConfig, Settings
 
 
 def _voice_slug(name: str) -> str:
-    slug = re.sub(r"[^\w\-]+", "_", name.strip())
-    return slug.strip("_")[:60] or "voice"
+    slug = re.sub(r"[^\w\s-]", "", name).strip().replace(" ", "_")
+    return slug[:60] or "voice"
 
 
 def generate_voice(
-    script_text: str,
+    script: str,
     avatar: AvatarConfig,
     date_str: str,
     assets_dir: Path,
@@ -25,18 +25,17 @@ def generate_voice(
         raise ValueError("ELEVENLABS_API_KEY is not set. Add it to ~/.starnews/.env")
     if not avatar.elevenlabs_voice_id:
         raise ValueError(
-            f"ElevenLabs voice ID missing for {avatar.display_name}. "
-            f"Set ELEVENLABS_VOICE_{avatar.key.upper()} in ~/.starnews/.env"
+            f"ELEVENLABS_VOICE_{avatar.key.upper()} is not set for {avatar.display_name}."
         )
 
     assets_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H_%M_%S")
+    timestamp = datetime.now(timezone.utc).strftime("%Y_%m_%dT%H_%M_%S")
     filename = f"ElevenLabs_{timestamp}_{_voice_slug(avatar.elevenlabs_voice_name)}.mp3"
     output_path = assets_dir / filename
 
     url = f"https://api.elevenlabs.io/v1/text-to-speech/{avatar.elevenlabs_voice_id}"
     payload = {
-        "text": script_text,
+        "text": script,
         "model_id": settings.elevenlabs_model_id,
         "voice_settings": {
             "stability": settings.elevenlabs_stability,
@@ -46,9 +45,9 @@ def generate_voice(
         },
     }
     headers = {
-        "xi-api-key": settings.elevenlabs_api_key,
-        "Content-Type": "application/json",
         "Accept": "audio/mpeg",
+        "Content-Type": "application/json",
+        "xi-api-key": settings.elevenlabs_api_key,
     }
 
     with httpx.Client(timeout=300) as client:

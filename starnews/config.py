@@ -17,17 +17,13 @@ class AvatarConfig:
     elevenlabs_voice_id: str
     heygen_avatar_id: str
     heygen_template_id: str
+    heygen_draft_name: str
 
 
 @dataclass
 class Settings:
     project_root: Path
     startv_root: Path
-    premiere_template: Path
-    export_preset_yt: Path
-    tv_sequence: str
-    sm_sequence: str
-    yt_sequence: str
     avatars: dict[str, AvatarConfig]
     avatar_rotation: list[str]
     gemini_model: str
@@ -37,10 +33,13 @@ class Settings:
     elevenlabs_similarity_boost: float
     elevenlabs_style: float
     elevenlabs_use_speaker_boost: bool
+    heygen_mode: str
     heygen_poll_interval: int
     heygen_poll_timeout: int
     heygen_width: int
     heygen_height: int
+    heygen_background_color: str
+    heygen_fit: str
     gemini_api_key: str
     elevenlabs_api_key: str
     heygen_api_key: str
@@ -75,20 +74,20 @@ def load_settings(config_path: Path | None = None) -> Settings:
     avatars: dict[str, AvatarConfig] = {}
     for key in rotation:
         entry = avatars_cfg.get(key, {})
-        env_voice = os.getenv(f"ELEVENLABS_VOICE_{key.upper()}", "")
+        env_el_voice = os.getenv(f"ELEVENLABS_VOICE_{key.upper()}", "")
         env_avatar = os.getenv(f"HEYGEN_AVATAR_{key.upper()}", "")
         env_template = os.getenv(f"HEYGEN_TEMPLATE_{key.upper()}", "")
         avatars[key] = AvatarConfig(
             key=key,
             display_name=entry.get("display_name", key.title()),
             elevenlabs_voice_name=entry.get("elevenlabs_voice_name", ""),
-            elevenlabs_voice_id=env_voice or entry.get("elevenlabs_voice_id", ""),
+            elevenlabs_voice_id=env_el_voice or entry.get("elevenlabs_voice_id", ""),
             heygen_avatar_id=env_avatar or entry.get("heygen_avatar_id", ""),
             heygen_template_id=env_template or entry.get("heygen_template_id", ""),
+            heygen_draft_name=entry.get("heygen_draft_name", ""),
         )
 
     paths = raw.get("paths", {})
-    premiere = raw.get("premiere", {})
     gemini = raw.get("gemini", {})
     elevenlabs = raw.get("elevenlabs", {})
     heygen = raw.get("heygen", {})
@@ -98,37 +97,25 @@ def load_settings(config_path: Path | None = None) -> Settings:
     return Settings(
         project_root=project_root,
         startv_root=_expand(paths.get("startv_root", "~/Documents/StarTV")),
-        premiere_template=_expand(
-            paths.get(
-                "premiere_template",
-                "~/Documents/StarTV/Vorlage_Neu Sämi_3.prproj",
-            )
-        ),
-        export_preset_yt=_expand(
-            paths.get(
-                "export_preset_yt",
-                "~/Documents/Adobe/Adobe Media Encoder/26.0/Presets/StarNews YT.epr",
-            )
-        ),
-        tv_sequence=premiere.get("tv_sequence", "SN_Täglich"),
-        sm_sequence=premiere.get("sm_sequence", "SN_Social"),
-        yt_sequence=premiere.get("yt_sequence", "SN_Täglich"),
         avatars=avatars,
         avatar_rotation=rotation,
-        gemini_model=gemini.get("model", "gemini-2.0-flash"),
+        gemini_model=gemini.get("model", "gemini-2.5-flash"),
         gemini_prompt_file=project_root / gemini.get("prompt_file", "prompts/gemini_script.txt"),
         elevenlabs_model_id=elevenlabs.get("model_id", "eleven_multilingual_v2"),
         elevenlabs_stability=float(elevenlabs.get("stability", 0.5)),
         elevenlabs_similarity_boost=float(elevenlabs.get("similarity_boost", 0.75)),
         elevenlabs_style=float(elevenlabs.get("style", 0.0)),
         elevenlabs_use_speaker_boost=bool(elevenlabs.get("use_speaker_boost", True)),
+        heygen_mode=str(heygen.get("mode", "manual")).lower(),
         heygen_poll_interval=int(heygen.get("poll_interval_seconds", 15)),
         heygen_poll_timeout=int(heygen.get("poll_timeout_seconds", 1800)),
         heygen_width=int(dim.get("width", 1920)),
         heygen_height=int(dim.get("height", 1080)),
-        gemini_api_key=os.getenv("GEMINI_API_KEY", ""),
-        elevenlabs_api_key=os.getenv("ELEVENLABS_API_KEY", ""),
-        heygen_api_key=os.getenv("HEYGEN_API_KEY", ""),
+        heygen_background_color=heygen.get("background_color", "#00B140"),
+        heygen_fit=str(heygen.get("fit", "cover")),
+        gemini_api_key=os.getenv("GEMINI_API_KEY", "").strip(),
+        elevenlabs_api_key=os.getenv("ELEVENLABS_API_KEY", "").strip(),
+        heygen_api_key=os.getenv("HEYGEN_API_KEY", "").strip(),
         state_file=_expand(raw.get("state_file", "~/.starnews/state.json")),
         web_host=web.get("host", "127.0.0.1"),
         web_port=int(web.get("port", 8765)),
