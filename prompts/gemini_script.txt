@@ -14,7 +14,7 @@ HASHTAGS:
 <8–12 relevante Hashtags auf Deutsch/Englisch, mit #, durch Leerzeichen getrennt. Immer #StarNews enthalten.>
 
 SCRIPT:
-<Moderator-Skript auf Deutsch, ca. 450–700 Wörter (2–2:30 Minuten). Spannender Einstieg, dann Fakten chronologisch, emotional aber sachlich. Keine Begrüssung am Anfang. Kein "Willkommen bei StarNews". Schliesse mit einem kurzen Ausblick oder Fazit.>
+<Moderator-Skript auf Deutsch, ca. 2–2:30 Minuten. Spannender Einstieg, dann Fakten chronologisch, emotional aber sachlich. Keine Begrüssung am Anfang. Kein "Willkommen bei StarNews". Schliesse mit einem kurzen Ausblick oder Fazit.>
 
 Regeln:
 - Schreibe flüssig zum Vorlesen, nicht wie Print.
