@@ -21,5 +21,6 @@ Regeln:
 - Nutze nur Informationen aus dem Artikel; erfinde keine Fakten.
 - Namen und Zahlen korrekt übernehmen.
 - Ton: unterhaltsam, aber respektvoll — besonders bei sensiblen Themen.
+- keine Gedankenstriche/Dash
 
 Artikel:
