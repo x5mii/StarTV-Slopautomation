@@ -6,10 +6,13 @@ import click
 
 from starnews.config import (
     default_config_local_path,
+    has_required_secrets,
     is_setup_complete,
     load_settings,
     save_folder_setup,
+    save_setup_config,
 )
+from starnews.secrets import env_to_config_local, parse_env_file, parse_env_text
 from starnews.pipeline import run_batch, run_pipeline, save_run_manifest
 from starnews.rotation import load_state, next_avatar
 
@@ -377,24 +380,63 @@ def heygen_avatars(config_path: Path | None) -> None:
     help="Optional path to config.yaml",
 )
 def setup(config_path: Path | None) -> None:
-    """First-time setup — choose where daily StarTV folders are created."""
+    """First-time setup — import team-secrets.env and choose output folder."""
     settings = load_settings(config_path)
     target = default_config_local_path()
 
     click.echo("StarNews setup")
     click.echo("=" * 40)
-    click.echo("API keys are built in. Choose your output folder only.")
     click.echo(f"Settings file: {target}")
     click.echo("")
 
-    startv_root = click.prompt(
-        "StarTV output folder (daily folders like 29.07/ will be created here)",
-        default=str(settings.startv_root),
-    )
+    if not has_required_secrets(settings):
+        env_path = click.prompt(
+            "Path to team-secrets.env",
+            type=click.Path(exists=True, path_type=Path),
+        )
+        startv_root = click.prompt(
+            "StarTV output folder",
+            default=str(settings.startv_root),
+        )
+        updates = env_to_config_local(parse_env_file(env_path), startv_root=startv_root.strip())
+        save_setup_config(updates, target)
+    else:
+        click.echo("API keys already loaded.")
+        startv_root = click.prompt(
+            "StarTV output folder (daily folders like 29.07/ will be created here)",
+            default=str(settings.startv_root),
+        )
+        save_folder_setup(startv_root.strip(), target)
 
-    save_folder_setup(startv_root.strip(), target)
+    if not is_setup_complete(load_settings(config_path)):
+        raise click.ClickException("Setup incomplete — check team-secrets.env and folder path.")
+
     click.echo(f"\nSaved {target}")
     click.echo("Run: starnews web   (or double-click Start-StarNews)")
+
+
+@main.command("import-secrets")
+@click.argument("env_file", type=click.Path(exists=True, path_type=Path))
+@click.option(
+    "--folder",
+    "startv_root",
+    default="",
+    help="StarTV output folder (optional if already set).",
+)
+@click.option(
+    "--config",
+    "config_path",
+    type=click.Path(exists=True, path_type=Path),
+    default=None,
+    help="Optional path to config.yaml",
+)
+def import_secrets(env_file: Path, startv_root: str, config_path: Path | None) -> None:
+    """Import team-secrets.env into local config.local.yaml."""
+    settings = load_settings(config_path)
+    folder = startv_root.strip() or str(settings.startv_root)
+    updates = env_to_config_local(parse_env_file(env_file), startv_root=folder)
+    target = save_setup_config(updates)
+    click.echo(f"Imported secrets into {target}")
 
 
 @main.command()

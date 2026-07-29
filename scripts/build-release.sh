@@ -6,10 +6,8 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 if [ ! -f "starnews/team_defaults.yaml" ]; then
-  echo "Missing starnews/team_defaults.yaml"
-  echo "Copy: cp starnews/team_defaults.example.yaml starnews/team_defaults.yaml"
-  echo "Then add your API keys before building."
-  exit 1
+  echo "Note: starnews/team_defaults.yaml not found."
+  echo "Coworkers will import team-secrets.env in the setup screen."
 fi
 
 if ! python3 -c "import PyInstaller" 2>/dev/null; then
@@ -26,6 +24,7 @@ mkdir -p "$RELEASE"
 cp -R dist/starnews/* "$RELEASE/"
 cp config.yaml "$RELEASE/"
 cp config.local.example.yaml "$RELEASE/"
+cp team-secrets.env.example "$RELEASE/"
 cp scripts/Start-StarNews.command "$RELEASE/"
 chmod +x "$RELEASE/Start-StarNews.command"
 

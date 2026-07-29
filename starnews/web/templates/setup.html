@@ -14,6 +14,7 @@
       --muted: #9aa3b8;
       --accent: #5b8cff;
       --accent-hover: #7aa3ff;
+      --ok: #3ecf8e;
       --err: #ff6b6b;
     }
     @media (prefers-color-scheme: light) {
@@ -34,11 +35,12 @@
       line-height: 1.5;
     }
     .wrap {
-      max-width: 640px;
+      max-width: 680px;
       margin: 0 auto;
       padding: 2rem 1.25rem 3rem;
     }
     h1 { margin: 0 0 0.25rem; font-size: 1.75rem; }
+    h2 { margin: 0 0 0.75rem; font-size: 1.05rem; }
     .subtitle { color: var(--muted); margin-bottom: 1.5rem; }
     .card {
       background: var(--card);
@@ -60,7 +62,7 @@
       margin-top: -0.2rem;
       margin-bottom: 0.5rem;
     }
-    input {
+    input[type="text"], input[type="file"], textarea {
       width: 100%;
       padding: 0.65rem 0.75rem;
       border: 1px solid var(--border);
@@ -70,7 +72,12 @@
       font-size: 1rem;
       margin-bottom: 1rem;
     }
-    input:focus {
+    textarea {
+      min-height: 140px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.82rem;
+    }
+    input:focus, textarea:focus {
       outline: 2px solid var(--accent);
       outline-offset: 1px;
     }
@@ -93,64 +100,101 @@
       margin-top: 0.75rem;
       white-space: pre-wrap;
     }
-    .note {
+    .note, .examples {
       font-size: 0.85rem;
       color: var(--muted);
-    }
-    .examples {
-      font-size: 0.85rem;
-      color: var(--muted);
-      margin: 0 0 1rem;
     }
     .examples code {
       display: block;
       margin-top: 0.35rem;
     }
+    .ok-pill {
+      display: inline-block;
+      background: #1f5c42;
+      color: var(--ok);
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+    }
+    .hidden { display: none; }
   </style>
 </head>
 <body>
   <div class="wrap">
     <h1>StarNews — Einrichtung</h1>
-    <p class="subtitle">Einmal den Ausgabeordner wählen — API-Keys sind bereits eingebaut.</p>
+    <p class="subtitle">Einmal einrichten — danach nur noch URL einfügen und starten.</p>
 
-    <div class="card">
-      <p class="note">Gespeichert in: <code>{{ config_local }}</code></p>
-      <form id="setup-form">
-        <label for="startv_root">StarTV Ordner (Ausgabe)</label>
-        <p class="hint">Hier werden die Tagesordner erstellt, z. B. <code>29.07/skript.docx</code> und <code>29.07/assets/</code>.</p>
-        <input type="text" id="startv_root" value="{{ startv_root }}" placeholder="/Users/Name/Documents/StarTV" required>
+    <form id="setup-form">
+      <div class="card" id="secrets-card">
+        <h2>1. Team-Zugangsdaten</h2>
+        {% if secrets_ready %}
+        <span class="ok-pill">✓ API-Keys bereits geladen</span>
+        <p class="note">Du kannst direkt den Ausgabeordner wählen.</p>
+        {% else %}
+        <p class="hint">Lade die Datei <code>team-secrets.env</code> vom Team-Lead oder füge den Inhalt ein.</p>
+        <label for="env_file">Datei laden (.env)</label>
+        <input type="file" id="env_file" accept=".env,text/plain">
 
+        <label for="env_text">Oder Inhalt einfügen</label>
+        <textarea id="env_text" placeholder="GEMINI_API_KEY=...
+ELEVENLABS_API_KEY=...
+ELEVENLABS_VOICE_TIM=..."></textarea>
+        {% endif %}
+      </div>
+
+      <div class="card">
+        <h2>2. StarTV Ausgabeordner</h2>
+        <p class="hint">Hier werden Tagesordner erstellt, z. B. <code>29.07/skript.docx</code> und <code>29.07/assets/</code>.</p>
+        <label for="startv_root">Ordnerpfad</label>
+        <input type="text" id="startv_root" value="{{ startv_root }}" placeholder="C:/Users/Name/Documents/StarTV" required>
         <div class="examples">
           Beispiele:
           <code>Mac: /Users/Name/Documents/StarTV</code>
           <code>Windows: C:/Users/Name/Documents/StarTV</code>
         </div>
-
+        <p class="note">Gespeichert in: <code>{{ config_local }}</code></p>
         <button type="submit" id="save-btn">Speichern &amp; starten</button>
         <div id="error" class="error-box"></div>
-      </form>
-    </div>
+      </div>
+    </form>
   </div>
 
   <script>
     const form = document.getElementById("setup-form");
     const errorEl = document.getElementById("error");
     const saveBtn = document.getElementById("save-btn");
+    const secretsReady = {{ "true" if secrets_ready else "false" }};
+    const envFile = document.getElementById("env_file");
+    const envText = document.getElementById("env_text");
+
+    if (envFile && envText) {
+      envFile.addEventListener("change", async () => {
+        const file = envFile.files[0];
+        if (!file) return;
+        envText.value = await file.text();
+      });
+    }
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       errorEl.textContent = "";
       saveBtn.disabled = true;
 
-      const payload = {
-        startv_root: document.getElementById("startv_root").value.trim(),
-      };
+      const formData = new FormData();
+      formData.append("startv_root", document.getElementById("startv_root").value.trim());
+      if (!secretsReady && envText) {
+        formData.append("env_text", envText.value.trim());
+        if (envFile && envFile.files[0]) {
+          formData.append("env_file", envFile.files[0]);
+        }
+      }
 
       try {
         const res = await fetch("/api/setup", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body: formData,
         });
         const data = await res.json();
         if (!res.ok) {
