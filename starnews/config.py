@@ -135,20 +135,43 @@ def _load_team_defaults() -> dict[str, Any]:
     return _load_yaml(_team_defaults_path())
 
 
+def has_required_secrets(settings: Settings) -> bool:
+    if not settings.gemini_api_key or not settings.elevenlabs_api_key:
+        return False
+    for key in settings.avatar_rotation:
+        if not settings.avatars[key].elevenlabs_voice_id:
+            return False
+    return True
+
+
 def missing_setup_fields(settings: Settings) -> list[str]:
+    missing: list[str] = []
+    if not has_required_secrets(settings):
+        missing.append("secrets")
     if settings.config_local_path:
         local_raw = _load_yaml(settings.config_local_path)
-        if _pick_str(local_raw.get("paths", {}).get("startv_root")):
-            return []
-    return ["startv_root"]
+        if not _pick_str(local_raw.get("paths", {}).get("startv_root")):
+            missing.append("startv_root")
+    else:
+        missing.append("startv_root")
+    return missing
 
 
 def is_setup_complete(settings: Settings) -> bool:
     return not missing_setup_fields(settings)
 
 
+def save_setup_config(data: dict[str, Any], path: Path | None = None) -> Path:
+    target = path or default_config_local_path()
+    existing = _load_yaml(target) if target.exists() else {}
+    from starnews.secrets import merge_config_dict
+
+    merged = merge_config_dict(existing, data)
+    return save_config_local(merged, target)
+
+
 def save_folder_setup(startv_root: str, path: Path | None = None) -> Path:
-    return save_config_local({"paths": {"startv_root": startv_root.strip()}}, path)
+    return save_setup_config({"paths": {"startv_root": startv_root.strip()}}, path)
 
 
 def save_config_local(data: dict[str, Any], path: Path | None = None) -> Path:

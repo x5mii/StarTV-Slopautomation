@@ -8,12 +8,15 @@ from flask import Flask, jsonify, redirect, render_template, request, url_for
 from starnews.config import (
     Settings,
     default_config_local_path,
+    has_required_secrets,
     is_setup_complete,
     load_settings,
-    save_folder_setup,
+    missing_setup_fields,
+    save_setup_config,
 )
 from starnews.pipeline import get_run_state, run_pipeline_tracked, save_run_manifest
 from starnews.rotation import load_state, next_avatar
+from starnews.secrets import env_to_config_local, parse_env_text
 
 
 def create_app(settings: Settings) -> Flask:
@@ -39,22 +42,55 @@ def create_app(settings: Settings) -> Flask:
         return render_template(
             "setup.html",
             startv_root=str(settings_ref.startv_root),
-            avatars=settings_ref.avatar_rotation,
-            avatar_info={key: settings_ref.avatars[key] for key in settings_ref.avatar_rotation},
             config_local=str(default_config_local_path()),
+            secrets_ready=has_required_secrets(settings_ref),
         )
 
     @app.post("/api/setup")
     def setup_save():
-        payload = request.get_json(silent=True) or {}
-        startv_root = (payload.get("startv_root") or "").strip()
+        startv_root = ""
+        env_text = ""
+
+        if request.content_type and "multipart/form-data" in request.content_type:
+            startv_root = (request.form.get("startv_root") or "").strip()
+            env_text = (request.form.get("env_text") or "").strip()
+            upload = request.files.get("env_file")
+            if upload and upload.filename:
+                env_text = upload.read().decode("utf-8", errors="replace")
+        else:
+            payload = request.get_json(silent=True) or {}
+            startv_root = (payload.get("startv_root") or "").strip()
+            env_text = (payload.get("env_text") or "").strip()
 
         if not startv_root:
-            return jsonify({"error": "Output folder is required."}), 400
+            return jsonify({"error": "StarTV output folder is required."}), 400
 
-        target = save_folder_setup(startv_root)
+        settings_ref = current_settings()
+        if not env_text.strip() and not has_required_secrets(settings_ref):
+            return jsonify(
+                {
+                    "error": (
+                        "Import team-secrets.env (file or paste). "
+                        "Ask your team lead for this file."
+                    )
+                }
+            ), 400
+
+        updates: dict = {"paths": {"startv_root": startv_root}}
+        if env_text.strip():
+            env_vars = parse_env_text(env_text)
+            updates = env_to_config_local(env_vars, startv_root=startv_root)
+
+        save_setup_config(updates)
         app.config["STARNNEWS_SETTINGS"] = load_settings()
-        return jsonify({"ok": True, "path": str(target)})
+        refreshed = current_settings()
+
+        if not is_setup_complete(refreshed):
+            missing = missing_setup_fields(refreshed)
+            labels = ", ".join(missing)
+            return jsonify({"error": f"Setup incomplete: {labels}"}), 400
+
+        return jsonify({"ok": True, "path": str(default_config_local_path())})
 
     @app.get("/")
     def index():
