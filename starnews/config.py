@@ -70,7 +70,7 @@ def load_settings(config_path: Path | None = None) -> Settings:
         raw = yaml.safe_load(f)
 
     avatars_cfg = raw.get("avatars", {})
-    rotation = avatars_cfg.get("rotation", ["tim", "leon", "chris"])
+    rotation = avatars_cfg.get("rotation", ["tim", "leon", "chris", "annie"])
     avatars: dict[str, AvatarConfig] = {}
     for key in rotation:
         entry = avatars_cfg.get(key, {})

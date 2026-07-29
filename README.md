@@ -45,6 +45,7 @@ ELEVENLABS_API_KEY=...
 ELEVENLABS_VOICE_TIM=m0jFDzIcZy0rC88oAehX      # Philip, friendly voice
 ELEVENLABS_VOICE_LEON=XJ6WvkWn5AiImouUWf8S      # Odeon
 ELEVENLABS_VOICE_CHRIS=MLFHn2hZ3zKifXrugl26    # Hans-Peter Lorenz
+ELEVENLABS_VOICE_ANNIE=N8RXoLEWQWUCCrT8uDK7    # Annie
 
 # Only needed for heygen.mode: auto (not recommended):
 # HEYGEN_API_KEY=...
@@ -60,8 +61,9 @@ Voice mapping (automatic from rotation):
 | Tim | Philip |
 | Leon | Odeon |
 | Chris | Hans-Peter Lorenz – Modern News Voice |
+| Annie | Annie |
 
-Avatar rotation state is stored in `~/.starnews/state.json` (Tim → Leon → Chris → Tim).
+Avatar rotation state is stored in `~/.starnews/state.json` (Tim → Leon → Chris → Annie → Tim).
 
 ### 3. Verify setup
 
@@ -90,7 +92,7 @@ heygen:
 starnews run "https://www.gala.de/stars/....html" --date 03.07
 ```
 
-Avatar rotation is automatic: Tim → Leon → Chris → repeat.
+Avatar rotation is automatic: Tim → Leon → Chris → Annie → repeat.
 
 ```bash
 starnews run "URL" --date 03.07 --resume    # reuse script + MP3
@@ -110,6 +112,7 @@ The pipeline prints which avatar and MP3 to use. Steps:
    | Tim | Tim 02.07 |
    | Leon | Leo 30.06 |
    | Chris | Chris_01.07 |
+   | Annie | Annie (update in `config.yaml` when your HeyGen draft name differs) |
 
 3. In the **Script** panel, choose **Upload Audio** (not typed script)
 4. Select the ElevenLabs MP3 from that day's `assets/` folder
