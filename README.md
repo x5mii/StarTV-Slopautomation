@@ -106,6 +106,8 @@ Rotation: Tim → Leon → Chris → Annie → …
 3. **Upload Audio** → MP3 aus `StarTV/DD.MM/assets/`
 4. Speichern als `{Avatar}_DD.MM_1080p.mp4` in `assets/`
 
+Audio vom Pipeline-Lauf heißt bereits `{Avatar}_DD.MM.mp3` (z.B. `Tim_29.07.mp3`).
+
 ---
 
 ## Probleme?

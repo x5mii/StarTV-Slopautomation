@@ -36,19 +36,40 @@ def main() -> None:
     help="Reuse cached script and ElevenLabs MP3 if already generated for this date.",
 )
 @click.option(
+    "--avatar",
+    "avatar_key",
+    default=None,
+    type=click.Choice(["tim", "leon", "chris", "annie"], case_sensitive=False),
+    help="Force avatar (tim/leon/chris/annie). Default: next in rotation.",
+)
+@click.option(
     "--config",
     "config_path",
     type=click.Path(exists=True, path_type=Path),
     default=None,
     help="Optional path to config.yaml",
 )
-def run(url: str, date: str, resume: bool, config_path: Path | None) -> None:
+def run(
+    url: str,
+    date: str,
+    resume: bool,
+    avatar_key: str | None,
+    config_path: Path | None,
+) -> None:
     """Run the pipeline for one Gala.de URL."""
     settings = load_settings(config_path)
     try:
-        result = run_pipeline(url, date, settings=settings, resume=resume)
+        result = run_pipeline(
+            url,
+            date,
+            settings=settings,
+            resume=resume,
+            avatar_key=avatar_key.lower() if avatar_key else None,
+        )
         save_run_manifest(result.day_dir, result)
         click.echo(f"\nDone. Output folder: {result.day_dir}")
+        if result.audio_path:
+            click.echo(f"Audio: {result.audio_path.name}")
     except Exception as exc:
         raise click.ClickException(str(exc)) from exc
 
