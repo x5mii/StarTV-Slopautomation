@@ -17,6 +17,5 @@ Copy-Item (Join-Path $Root "scripts\Start-StarNews.bat") $Release
 
 Write-Host ""
 Write-Host "Built: $Release"
-Write-Host "1. Copy config.local.example.yaml -> config.local.yaml and fill in team keys"
-Write-Host "2. Zip the StarNews-Windows folder and send it privately"
-Write-Host "3. Teammate double-clicks Start-StarNews.bat"
+Write-Host "Zip and share: $Release"
+Write-Host "Coworkers double-click Start-StarNews and choose their output folder."

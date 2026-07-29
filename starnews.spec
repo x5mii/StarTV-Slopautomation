@@ -11,6 +11,7 @@ a = Analysis(
         ("config.yaml", "."),
         ("prompts", "prompts"),
         ("starnews/web/templates", "starnews/web/templates"),
+        ("starnews/team_defaults.yaml", "starnews"),
     ],
     hiddenimports=[
         "google.genai",

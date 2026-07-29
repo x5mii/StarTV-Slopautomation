@@ -124,21 +124,31 @@ def _pick_str(*values: object) -> str:
     return ""
 
 
+def _team_defaults_path() -> Path:
+    bundled = resource_dir() / "starnews" / "team_defaults.yaml"
+    if bundled.exists():
+        return bundled
+    return Path(__file__).resolve().parent / "team_defaults.yaml"
+
+
+def _load_team_defaults() -> dict[str, Any]:
+    return _load_yaml(_team_defaults_path())
+
+
 def missing_setup_fields(settings: Settings) -> list[str]:
-    missing: list[str] = []
-    if not settings.gemini_api_key:
-        missing.append("gemini_api_key")
-    if not settings.elevenlabs_api_key:
-        missing.append("elevenlabs_api_key")
-    for key in settings.avatar_rotation:
-        avatar = settings.avatars[key]
-        if not avatar.elevenlabs_voice_id:
-            missing.append(f"elevenlabs_voice_{key}")
-    return missing
+    if settings.config_local_path:
+        local_raw = _load_yaml(settings.config_local_path)
+        if _pick_str(local_raw.get("paths", {}).get("startv_root")):
+            return []
+    return ["startv_root"]
 
 
 def is_setup_complete(settings: Settings) -> bool:
     return not missing_setup_fields(settings)
+
+
+def save_folder_setup(startv_root: str, path: Path | None = None) -> Path:
+    return save_config_local({"paths": {"startv_root": startv_root.strip()}}, path)
 
 
 def save_config_local(data: dict[str, Any], path: Path | None = None) -> Path:
@@ -155,6 +165,7 @@ def load_settings(config_path: Path | None = None) -> Settings:
     config_path = resolve_config_path(config_path)
     local_path = find_config_local()
     local_raw = _load_yaml(local_path) if local_path else {}
+    team_raw = _load_team_defaults()
 
     _load_env_files()
 
@@ -166,6 +177,10 @@ def load_settings(config_path: Path | None = None) -> Settings:
     local_voices = local_raw.get("elevenlabs_voices", {})
     local_avatars = local_raw.get("heygen_avatars", {})
     local_templates = local_raw.get("heygen_templates", {})
+    team_api = team_raw.get("api_keys", {})
+    team_voices = team_raw.get("elevenlabs_voices", {})
+    team_avatars = team_raw.get("heygen_avatars", {})
+    team_templates = team_raw.get("heygen_templates", {})
 
     avatars_cfg = raw.get("avatars", {})
     rotation = avatars_cfg.get("rotation", ["tim", "leon", "chris", "annie"])
@@ -182,16 +197,19 @@ def load_settings(config_path: Path | None = None) -> Settings:
             elevenlabs_voice_id=_pick_str(
                 local_voices.get(key),
                 env_el_voice,
+                team_voices.get(key),
                 entry.get("elevenlabs_voice_id"),
             ),
             heygen_avatar_id=_pick_str(
                 local_avatars.get(key),
                 env_avatar,
+                team_avatars.get(key),
                 entry.get("heygen_avatar_id"),
             ),
             heygen_template_id=_pick_str(
                 local_templates.get(key),
                 env_template,
+                team_templates.get(key),
                 entry.get("heygen_template_id"),
             ),
             heygen_draft_name=entry.get("heygen_draft_name", ""),
@@ -228,12 +246,21 @@ def load_settings(config_path: Path | None = None) -> Settings:
         heygen_height=int(dim.get("height", 1080)),
         heygen_background_color=heygen.get("background_color", "#00B140"),
         heygen_fit=str(heygen.get("fit", "cover")),
-        gemini_api_key=_pick_str(local_api.get("gemini"), os.getenv("GEMINI_API_KEY")),
+        gemini_api_key=_pick_str(
+            local_api.get("gemini"),
+            os.getenv("GEMINI_API_KEY"),
+            team_api.get("gemini"),
+        ),
         elevenlabs_api_key=_pick_str(
             local_api.get("elevenlabs"),
             os.getenv("ELEVENLABS_API_KEY"),
+            team_api.get("elevenlabs"),
         ),
-        heygen_api_key=_pick_str(local_api.get("heygen"), os.getenv("HEYGEN_API_KEY")),
+        heygen_api_key=_pick_str(
+            local_api.get("heygen"),
+            os.getenv("HEYGEN_API_KEY"),
+            team_api.get("heygen"),
+        ),
         state_file=_expand(raw.get("state_file", "~/.starnews/state.json")),
         web_host=web.get("host", "127.0.0.1"),
         web_port=int(web.get("port", 8765)),

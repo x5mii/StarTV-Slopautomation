@@ -22,8 +22,11 @@ cp config.local.example.yaml "$RELEASE/"
 cp scripts/Start-StarNews.command "$RELEASE/"
 chmod +x "$RELEASE/Start-StarNews.command"
 
+ZIP="$ROOT/release/StarNews-macOS.zip"
+rm -f "$ZIP"
+(cd "$ROOT/release" && zip -r "StarNews-macOS.zip" "StarNews-macOS" >/dev/null)
+
 echo ""
 echo "Built: $RELEASE"
-echo "1. Copy config.local.example.yaml -> config.local.yaml and fill in team keys"
-echo "2. Zip the StarNews-macOS folder and send it privately"
-echo "3. Teammate double-clicks Start-StarNews.command"
+echo "Zip:   $ZIP"
+echo "Share the zip with coworkers — they only choose their output folder on first run."

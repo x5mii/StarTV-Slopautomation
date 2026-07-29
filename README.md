@@ -8,52 +8,63 @@ Works on **macOS** and **Windows** (Python 3.10+).
 
 ---
 
-## Easy install (for teammates — no `.env` file)
+## Install for coworkers (recommended)
 
-**You do not need to edit a `.env` file.** Use one of these:
+API keys and voice IDs are **built into the app**. Each person only picks their **output folder** once on first launch.
 
-### Option A — Zip folder (easiest, no Python for friends)
+### macOS
 
-1. **You** build once on your Mac or PC:
-   ```bash
-   # macOS
-   ./scripts/build-release.sh
-   # Windows (PowerShell)
-   .\scripts\build-release.ps1
-   ```
-2. Copy `config.local.example.yaml` → `config.local.yaml` in the `release/StarNews-*` folder and paste your **team API keys + voice IDs** (same ElevenLabs account for everyone).
-3. Zip the folder and send it privately (WhatsApp, Drive, etc.) — **not** via public GitHub.
-4. **Friend** unzips and double-clicks:
-   - Mac: `Start-StarNews.command`
-   - Windows: `Start-StarNews.bat`
-5. Browser opens. If setup is missing, they only enter their **output folder** (or you pre-fill it). Then: paste Gala URL → start.
+1. Download **`StarNews-macOS.zip`** from your team lead (or build it: `./scripts/build-release.sh`).
+2. Unzip the folder.
+3. Double-click **`Start-StarNews.command`**.
+4. Browser opens → enter your StarTV folder, e.g. `/Users/YourName/Documents/StarTV`.
+5. Paste a Gala.de URL, pick the date, click **Pipeline starten**.
 
-### Option B — One setup file instead of `.env`
+### Windows
 
-```bash
-cp config.local.example.yaml config.local.yaml
-# edit config.local.yaml (keys + voices in one place)
-starnews web
-```
+1. Download **`StarNews-Windows.zip`** from your team lead (or build it: `.\scripts\build-release.ps1`).
+2. Unzip the folder.
+3. Double-click **`Start-StarNews.bat`**.
+4. Browser opens → enter your StarTV folder, e.g. `C:/Users/YourName/Documents/StarTV`.
+5. Paste a Gala.de URL, pick the date, click **Pipeline starten**.
 
-Or run the guided wizard:
-
-```bash
-starnews setup
-starnews web
-```
-
-The web UI also shows a **setup page** on first launch if keys are missing.
-
-| Old way | New way |
-|---------|---------|
-| `~/.starnews/.env` | `config.local.yaml` next to the app (or `~/.starnews/config.local.yaml`) |
-| Manual nano/notepad | `starnews setup` or browser form |
-| `pip install` + terminal | Zip + double-click launcher |
-
-`.env` still works if you already use it — `config.local.yaml` takes priority.
+No Python, Git, or `.env` file needed.
 
 ---
+
+## Build the zip (team lead)
+
+From the repo on **macOS** (builds the Mac app) or **Windows** (builds the Windows app):
+
+```bash
+# macOS
+chmod +x scripts/build-release.sh scripts/Start-StarNews.command
+./scripts/build-release.sh
+
+# Windows (PowerShell)
+.\scripts\build-release.ps1
+```
+
+Output: `release/StarNews-macOS/` or `release/StarNews-Windows/` — zip that folder and share it.
+
+---
+
+## Voice mapping
+
+| Avatar | ElevenLabs voice | HeyGen draft (`config.yaml`) |
+|--------|------------------|------------------------------|
+| Tim | Philip, friendly voice | Tim 02.07 |
+| Leon | Odeon | Leo 30.06 |
+| Chris | Hans-Peter Lorenz – Modern News Voice | Chris_01.07 |
+| Annie | Emilia Roth | Annie_29.08 |
+
+Rotation: Tim → Leon → Chris → Annie → repeat.
+
+---
+
+## Developer install (optional)
+
+If you work on the code itself:
 
 ## What it does
 
@@ -65,8 +76,6 @@ The web UI also shows a **setup page** on first launch if keys are missing.
 | Moderator video (draft look) | HeyGen | manual (default) |
 
 Pictures, Premiere editing, and exports stay manual.
-
-**Avatar rotation:** Tim → Leon → Chris → Annie → repeat.
 
 ---
 
@@ -140,36 +149,20 @@ starnews status
 
 ## API keys
 
-**Recommended:** `config.local.yaml` (see `config.local.example.yaml`) — one file, no `.env` syntax.
+**Coworkers:** keys are in `starnews/team_defaults.yaml` (built into the app). Nothing to configure.
 
-**Legacy:** `~/.starnews/.env` still supported.
+**Per user:** only `config.local.yaml` with the output folder (created automatically on first launch).
 
-Create a file:
+**Legacy dev option:** `~/.starnews/.env` still works and overrides team defaults.
 
-| Method | Path |
-|--------|------|
-| **Easy (recommended)** | `config.local.yaml` next to the app |
-| macOS / Linux legacy | `~/.starnews/.env` |
-| Windows legacy | `%USERPROFILE%\.starnews\.env` |
-
-**config.local.yaml** example (fill in your own keys — **never commit this file**):
+**config.local.yaml** (auto-created — only the folder matters):
 
 ```yaml
 paths:
   startv_root: /Users/YOURNAME/Documents/StarTV
-
-api_keys:
-  gemini: your_gemini_key
-  elevenlabs: your_elevenlabs_key
-
-elevenlabs_voices:
-  tim: your_tim_voice_id
-  leon: your_leon_voice_id
-  chris: your_chris_voice_id
-  annie: your_annie_voice_id
 ```
 
-**Legacy `.env`** example:
+**Legacy `.env`** (developers only):
 
 ```env
 GEMINI_API_KEY=your_gemini_key
@@ -228,7 +221,7 @@ All commands support `--config PATH` to use a custom `config.yaml`.
 
 ### `starnews setup`
 
-First-time wizard — saves `config.local.yaml` (no `.env` needed).
+Choose the StarTV output folder (API keys are built in).
 
 ```bash
 starnews setup
@@ -338,26 +331,18 @@ Premiere, pictures, TV/YT/SM exports — unchanged.
 
 ---
 
-## Standalone app for teammates (advanced)
+## Standalone app bundle
 
-There is **no pre-built installer on GitHub** (API keys must stay private). **You** build a folder and zip it for your team:
+Build on the target OS, then zip `release/StarNews-*` for coworkers:
 
 ```bash
-# macOS
-./scripts/build-release.sh
-# Windows
-.\scripts\build-release.ps1
+./scripts/build-release.sh      # macOS
+.\scripts\build-release.ps1     # Windows
 ```
 
-Output: `release/StarNews-macOS/` or `release/StarNews-Windows/` containing:
+Contains `starnews`, `Start-StarNews` launcher, and built-in team keys. Coworkers only set their output folder on first run.
 
-- `starnews` / `starnews.exe`
-- `config.yaml`
-- `Start-StarNews.command` / `Start-StarNews.bat`
-
-Before zipping, add **`config.local.yaml`** with team keys (copy from `config.local.example.yaml`). Friends only change `startv_root` if needed.
-
-Manual PyInstaller (if you prefer):
+Manual PyInstaller:
 
 ```bash
 pip install pyinstaller

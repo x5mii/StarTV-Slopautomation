@@ -8,7 +8,7 @@ from starnews.config import (
     default_config_local_path,
     is_setup_complete,
     load_settings,
-    save_config_local,
+    save_folder_setup,
 )
 from starnews.pipeline import run_batch, run_pipeline, save_run_manifest
 from starnews.rotation import load_state, next_avatar
@@ -377,52 +377,22 @@ def heygen_avatars(config_path: Path | None) -> None:
     help="Optional path to config.yaml",
 )
 def setup(config_path: Path | None) -> None:
-    """First-time setup — saves API keys to config.local.yaml (no .env file needed)."""
+    """First-time setup — choose where daily StarTV folders are created."""
     settings = load_settings(config_path)
     target = default_config_local_path()
 
     click.echo("StarNews setup")
     click.echo("=" * 40)
+    click.echo("API keys are built in. Choose your output folder only.")
     click.echo(f"Settings file: {target}")
     click.echo("")
 
     startv_root = click.prompt(
-        "StarTV output folder",
+        "StarTV output folder (daily folders like 29.07/ will be created here)",
         default=str(settings.startv_root),
     )
-    gemini_key = click.prompt(
-        "Gemini API key",
-        default=settings.gemini_api_key or None,
-        hide_input=True,
-        show_default=False,
-    )
-    elevenlabs_key = click.prompt(
-        "ElevenLabs API key",
-        default=settings.elevenlabs_api_key or None,
-        hide_input=True,
-        show_default=False,
-    )
 
-    voices: dict[str, str] = {}
-    for key in settings.avatar_rotation:
-        avatar = settings.avatars[key]
-        label = f"{avatar.display_name} voice ID ({avatar.elevenlabs_voice_name})"
-        voices[key] = click.prompt(
-            label,
-            default=avatar.elevenlabs_voice_id or None,
-            show_default=bool(avatar.elevenlabs_voice_id),
-        )
-
-    data = {
-        "paths": {"startv_root": startv_root.strip()},
-        "api_keys": {
-            "gemini": gemini_key.strip(),
-            "elevenlabs": elevenlabs_key.strip(),
-        },
-        "elevenlabs_voices": voices,
-    }
-
-    save_config_local(data, target)
+    save_folder_setup(startv_root.strip(), target)
     click.echo(f"\nSaved {target}")
     click.echo("Run: starnews web   (or double-click Start-StarNews)")
 
@@ -459,7 +429,7 @@ def web(host: str | None, port: int | None, config_path: Path | None) -> None:
     url = f"http://{bind_host}:{bind_port}"
     click.echo(f"StarNews web UI: {url}")
     if not is_setup_complete(settings):
-        click.echo("Setup required — open the page and enter API keys.")
+        click.echo("First run — choose your StarTV output folder in the browser.")
         path = "/setup"
     else:
         path = "/"

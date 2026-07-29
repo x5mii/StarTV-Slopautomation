@@ -5,7 +5,13 @@ import traceback
 
 from flask import Flask, jsonify, redirect, render_template, request, url_for
 
-from starnews.config import Settings, default_config_local_path, is_setup_complete, load_settings, save_config_local
+from starnews.config import (
+    Settings,
+    default_config_local_path,
+    is_setup_complete,
+    load_settings,
+    save_folder_setup,
+)
 from starnews.pipeline import get_run_state, run_pipeline_tracked, save_run_manifest
 from starnews.rotation import load_state, next_avatar
 
@@ -40,31 +46,13 @@ def create_app(settings: Settings) -> Flask:
 
     @app.post("/api/setup")
     def setup_save():
-        settings_ref = current_settings()
         payload = request.get_json(silent=True) or {}
-
         startv_root = (payload.get("startv_root") or "").strip()
-        gemini = (payload.get("gemini_api_key") or "").strip()
-        elevenlabs = (payload.get("elevenlabs_api_key") or "").strip()
-        voices_in = payload.get("elevenlabs_voices") or {}
 
-        if not startv_root or not gemini or not elevenlabs:
-            return jsonify({"error": "Output folder and both API keys are required."}), 400
+        if not startv_root:
+            return jsonify({"error": "Output folder is required."}), 400
 
-        voices: dict[str, str] = {}
-        for key in settings_ref.avatar_rotation:
-            voice_id = str(voices_in.get(key) or "").strip()
-            if not voice_id:
-                name = settings_ref.avatars[key].display_name
-                return jsonify({"error": f"Voice ID for {name} is required."}), 400
-            voices[key] = voice_id
-
-        data = {
-            "paths": {"startv_root": startv_root},
-            "api_keys": {"gemini": gemini, "elevenlabs": elevenlabs},
-            "elevenlabs_voices": voices,
-        }
-        target = save_config_local(data)
+        target = save_folder_setup(startv_root)
         app.config["STARNNEWS_SETTINGS"] = load_settings()
         return jsonify({"ok": True, "path": str(target)})
 

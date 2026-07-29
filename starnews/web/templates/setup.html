@@ -97,41 +97,34 @@
       font-size: 0.85rem;
       color: var(--muted);
     }
-    hr {
-      border: none;
-      border-top: 1px solid var(--border);
-      margin: 1.25rem 0;
+    .examples {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin: 0 0 1rem;
+    }
+    .examples code {
+      display: block;
+      margin-top: 0.35rem;
     }
   </style>
 </head>
 <body>
   <div class="wrap">
     <h1>StarNews — Einrichtung</h1>
-    <p class="subtitle">Einmal ausfüllen — danach nur noch URL einfügen und starten.</p>
+    <p class="subtitle">Einmal den Ausgabeordner wählen — API-Keys sind bereits eingebaut.</p>
 
     <div class="card">
       <p class="note">Gespeichert in: <code>{{ config_local }}</code></p>
       <form id="setup-form">
         <label for="startv_root">StarTV Ordner (Ausgabe)</label>
-        <p class="hint">Wo die Tagesordner (z. B. 29.07/) erstellt werden.</p>
-        <input type="text" id="startv_root" value="{{ startv_root }}" required>
+        <p class="hint">Hier werden die Tagesordner erstellt, z. B. <code>29.07/skript.docx</code> und <code>29.07/assets/</code>.</p>
+        <input type="text" id="startv_root" value="{{ startv_root }}" placeholder="/Users/Name/Documents/StarTV" required>
 
-        <hr>
-
-        <label for="gemini">Gemini API Key</label>
-        <input type="password" id="gemini" autocomplete="off" required>
-
-        <label for="elevenlabs">ElevenLabs API Key</label>
-        <input type="password" id="elevenlabs" autocomplete="off" required>
-
-        <hr>
-
-        {% for key in avatars %}
-        {% set av = avatar_info[key] %}
-        <label for="voice_{{ key }}">{{ av.display_name }} — Voice ID</label>
-        <p class="hint">{{ av.elevenlabs_voice_name }} (ElevenLabs → Voices → ID kopieren)</p>
-        <input type="text" id="voice_{{ key }}" data-voice-key="{{ key }}" required>
-        {% endfor %}
+        <div class="examples">
+          Beispiele:
+          <code>Mac: /Users/Name/Documents/StarTV</code>
+          <code>Windows: C:/Users/Name/Documents/StarTV</code>
+        </div>
 
         <button type="submit" id="save-btn">Speichern &amp; starten</button>
         <div id="error" class="error-box"></div>
@@ -149,16 +142,8 @@
       errorEl.textContent = "";
       saveBtn.disabled = true;
 
-      const voices = {};
-      document.querySelectorAll("[data-voice-key]").forEach((el) => {
-        voices[el.dataset.voiceKey] = el.value.trim();
-      });
-
       const payload = {
         startv_root: document.getElementById("startv_root").value.trim(),
-        gemini_api_key: document.getElementById("gemini").value.trim(),
-        elevenlabs_api_key: document.getElementById("elevenlabs").value.trim(),
-        elevenlabs_voices: voices,
       };
 
       try {

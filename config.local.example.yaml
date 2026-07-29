@@ -1,27 +1,6 @@
-# Copy to config.local.yaml next to the app (or send a pre-filled file to teammates).
-# This file replaces ~/.starnews/.env — no manual .env editing needed.
-#
-# macOS/Linux: cp config.local.example.yaml config.local.yaml
-# Windows:     copy config.local.example.yaml config.local.yaml
+# First-run setup creates this file automatically.
+# Only the StarTV output folder is per user — API keys are built into the app.
 
 paths:
   startv_root: /Users/YOURNAME/Documents/StarTV
   # Windows example: C:/Users/YOURNAME/Documents/StarTV
-
-api_keys:
-  gemini: your_gemini_api_key
-  elevenlabs: your_elevenlabs_api_key
-  heygen: ""  # optional — only for heygen.mode: auto
-
-elevenlabs_voices:
-  tim: your_tim_voice_id
-  leon: your_leon_voice_id
-  chris: your_chris_voice_id
-  annie: your_annie_voice_id
-
-# Optional — only for heygen.mode: auto
-heygen_avatars:
-  tim: ""
-  leon: ""
-  chris: ""
-  annie: ""
