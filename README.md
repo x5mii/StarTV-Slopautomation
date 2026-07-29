@@ -6,10 +6,11 @@ StarNews automatisiert: Gala.de → Skript → ElevenLabs Stimme → HeyGen (man
 
 ---
 
-# Installieren & starten (für alle im Team)
+# Installieren & starten
 
-Du brauchst **einmalig**: Python + Git (Links unten).  
-Danach: **einen Befehl kopieren → Terminal einfügen → Enter**.
+**Kopieren → in Terminal einfügen → Enter.**
+
+Wichtig: Immer `py -m starnews` (Windows) bzw. `python3 -m starnews` (Mac) nutzen — **nicht** nur `starnews`.
 
 ---
 
@@ -17,32 +18,38 @@ Danach: **einen Befehl kopieren → Terminal einfügen → Enter**.
 
 ### Einmal installieren
 
-1. **`Windows-Taste`** drücken, **`powershell`** tippen, **Enter**
-2. **Alles** markieren, kopieren, ins schwarze Fenster **rechtsklicken** (einfügen), **Enter**:
+1. **`Windows-Taste`** → **`powershell`** tippen → **Enter**
+2. Diesen Befehl **komplett** kopieren, ins Fenster **rechtsklicken** (einfügen), **Enter**:
 
 ```powershell
 git clone -b cursor/starnews-daily-pipeline https://github.com/x5mii/StarTV-Slopautomation.git $HOME\StarTV-Slopautomation; cd $HOME\StarTV-Slopautomation; py -m pip install -e .; py -m starnews web
 ```
 
-> Geht `py` nicht? Ersetze **beide** `py` durch `python` und nochmal Enter.
+> Geht `py` nicht? Ersetze **beide** `py` durch `python`.
 
-3. **Browser** öffnet sich automatisch
-4. **Einmal einrichten** (nur beim ersten Mal):
-   - Datei **`team-secrets.env`** vom Team-Lead laden **oder** Inhalt einfügen  
-     *(bekommst du per WhatsApp/Drive — nicht selbst tippen)*
+3. Browser öffnet sich
+4. **Nur beim ersten Mal** einrichten:
+   - **`team-secrets.env`** vom Team-Lead laden (oder Inhalt einfügen)
    - **StarTV Ordner** eintragen, z.B. `C:/Users/DeinName/Documents/StarTV`
-   - **Speichern & starten** klicken
+   - **Speichern & starten**
 
 ### Jeden Tag starten
 
-1. **`Windows-Taste`** → **`powershell`** → **Enter**
-2. Kopieren, einfügen, **Enter**:
+PowerShell öffnen, dann:
 
 ```powershell
 cd $HOME\StarTV-Slopautomation; py -m starnews web
 ```
 
-3. Gala-URL einfügen → Datum → **Pipeline starten**
+### Schon installiert, aber Fehler `starnews is not recognized`?
+
+Das ist normal. PowerShell öffnen und **genau diesen** Befehl nutzen:
+
+```powershell
+cd $HOME\StarTV-Slopautomation; py -m starnews web
+```
+
+Eine gelbe Meldung `Scripts which is not on PATH` kannst du **ignorieren** — die Installation war trotzdem erfolgreich.
 
 ---
 
@@ -50,23 +57,20 @@ cd $HOME\StarTV-Slopautomation; py -m starnews web
 
 ### Einmal installieren
 
-1. **`Spotlight`** (`Cmd + Leertaste`) → **`Terminal`** → **Enter**
-2. **Alles** kopieren, einfügen, **Enter**:
+1. **`Cmd + Leertaste`** → **`Terminal`** → **Enter**
+2. Diesen Befehl **komplett** kopieren, einfügen, **Enter**:
 
 ```bash
 git clone -b cursor/starnews-daily-pipeline https://github.com/x5mii/StarTV-Slopautomation.git ~/StarTV-Slopautomation && cd ~/StarTV-Slopautomation && python3 -m pip install -e . && python3 -m starnews web
 ```
 
-3. **Browser** öffnet sich
-4. **Einmal einrichten** (nur beim ersten Mal):
-   - **`team-secrets.env`** laden oder einfügen (vom Team-Lead)
+3. Browser öffnet sich
+4. **Nur beim ersten Mal** einrichten:
+   - **`team-secrets.env`** laden oder einfügen
    - **StarTV Ordner**, z.B. `/Users/DeinName/Documents/StarTV`
    - **Speichern & starten**
 
 ### Jeden Tag starten
-
-1. **Terminal** öffnen
-2. Kopieren, einfügen, **Enter**:
 
 ```bash
 cd ~/StarTV-Slopautomation && python3 -m starnews web
@@ -78,13 +82,13 @@ cd ~/StarTV-Slopautomation && python3 -m starnews web
 
 | Was | Wofür |
 |-----|--------|
-| **`team-secrets.env`** | API-Keys — **einmal** in der Einrichtung laden (nicht abtippen!) |
+| **`team-secrets.env`** | API-Keys — einmal in der Einrichtung laden (nicht abtippen) |
 
 ---
 
-## Einmalig: Python & Git installieren
+## Einmalig: Python & Git
 
-Nur nötig, wenn der Befehl oben mit „nicht gefunden“ / „not recognized“ abbricht.
+Nur nötig, wenn der Befehl mit „nicht gefunden“ / „not recognized“ abbricht.
 
 | Programm | Windows | Mac |
 |----------|---------|-----|
@@ -119,9 +123,10 @@ Rotation: Tim → Leon → Chris → Annie → …
 
 | Fehler | Lösung |
 |--------|--------|
+| `'starnews' is not recognized` | Nutze `py -m starnews web` (Windows) bzw. `python3 -m starnews web` (Mac) |
+| `Scripts which is not on PATH` | Ignorieren — Installation war ok |
 | `'git' is not recognized` | Git installieren (Tabelle oben) |
-| `'py' / 'python3' is not recognized` | Python installieren, Terminal neu öffnen |
-| `'starnews' is not recognized` | Ignorieren — immer `py -m starnews web` (Windows) bzw. `python3 -m starnews web` (Mac) nutzen |
+| `'py' / 'python3' is not recognized` | Python installieren, PowerShell/Terminal **neu** öffnen |
 | Setup: secrets fehlen | `team-secrets.env` laden oder einfügen |
 | Falscher Ordner | `config.local.yaml` im App-Ordner löschen, neu starten |
 
@@ -136,9 +141,7 @@ Rotation: Tim → Leon → Chris → Annie → …
 .\scripts\build-release.ps1     # Windows → release/StarNews-Windows.zip
 ```
 
-**Secrets-Datei erstellen:** `cp team-secrets.env.example team-secrets.env` → Keys eintragen → privat verschicken.
-
-**Alle Befehle:**
+**Secrets-Datei:** `cp team-secrets.env.example team-secrets.env` → Keys eintragen → privat verschicken.
 
 | Befehl (Windows) | Befehl (Mac) | Beschreibung |
 |------------------|--------------|--------------|
