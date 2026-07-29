@@ -2,6 +2,7 @@ __pycache__/
 *.py[cod]
 .env
 config.local.yaml
+team-secrets.env
 team_defaults.yaml
 release/
 build/
