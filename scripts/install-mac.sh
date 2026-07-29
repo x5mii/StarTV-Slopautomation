@@ -38,4 +38,4 @@ echo ""
 echo "=== Fertig! Starte StarNews... ==="
 echo "Ordner: $INSTALL_DIR"
 echo ""
-starnews web
+python3 -m starnews web

@@ -3,8 +3,6 @@ cd "$(dirname "$0")"
 
 if [ -x "./starnews" ]; then
   APP="./starnews"
-elif command -v starnews >/dev/null 2>&1; then
-  APP="starnews"
 else
   APP="python3 -m starnews"
 fi
