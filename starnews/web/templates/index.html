@@ -35,19 +35,12 @@
       line-height: 1.5;
     }
     .wrap {
-      max-width: 720px;
+      max-width: 880px;
       margin: 0 auto;
       padding: 2rem 1.25rem 3rem;
     }
-    h1 {
-      margin: 0 0 0.25rem;
-      font-size: 1.75rem;
-      font-weight: 700;
-    }
-    .subtitle {
-      color: var(--muted);
-      margin-bottom: 1.5rem;
-    }
+    h1 { margin: 0 0 0.25rem; font-size: 1.75rem; font-weight: 700; }
+    .subtitle { color: var(--muted); margin-bottom: 1.5rem; }
     .card {
       background: var(--card);
       border: 1px solid var(--border);
@@ -57,21 +50,21 @@
     }
     label {
       display: block;
-      font-size: 0.875rem;
+      font-size: 0.8rem;
       font-weight: 600;
-      margin-bottom: 0.35rem;
+      margin-bottom: 0.3rem;
+      color: var(--muted);
     }
-    input[type="text"], input[type="url"] {
+    input, select {
       width: 100%;
-      padding: 0.65rem 0.75rem;
+      padding: 0.6rem 0.7rem;
       border: 1px solid var(--border);
       border-radius: 8px;
       background: transparent;
       color: var(--text);
-      font-size: 1rem;
-      margin-bottom: 1rem;
+      font-size: 0.95rem;
     }
-    input:focus {
+    input:focus, select:focus {
       outline: 2px solid var(--accent);
       outline-offset: 1px;
     }
@@ -84,10 +77,21 @@
       font-size: 1rem;
       font-weight: 600;
       cursor: pointer;
-      width: 100%;
     }
     button:hover:not(:disabled) { background: var(--accent-hover); }
     button:disabled { opacity: 0.55; cursor: not-allowed; }
+    button.secondary {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    button.danger {
+      background: transparent;
+      color: var(--err);
+      border: 1px solid var(--border);
+      padding: 0.45rem 0.7rem;
+      font-size: 0.85rem;
+    }
     .meta {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -96,6 +100,34 @@
     }
     .meta dt { color: var(--muted); margin: 0; }
     .meta dd { margin: 0.15rem 0 0; font-weight: 600; }
+    .job {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+    }
+    .job-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .job-grid {
+      display: grid;
+      grid-template-columns: 1.6fr 0.7fr 0.9fr;
+      gap: 0.75rem;
+    }
+    @media (max-width: 700px) {
+      .job-grid { grid-template-columns: 1fr; }
+    }
+    .actions {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 0.75rem;
+    }
+    .actions button { flex: 1; }
     .status-pill {
       display: inline-block;
       padding: 0.15rem 0.55rem;
@@ -105,7 +137,7 @@
       text-transform: uppercase;
       letter-spacing: 0.04em;
     }
-    .status-idle { background: var(--border); color: var(--muted); }
+    .status-idle, .status-pending { background: var(--border); color: var(--muted); }
     .status-running { background: #3d4f8a; color: #c8d8ff; }
     .status-completed { background: #1f5c42; color: var(--ok); }
     .status-failed { background: #5c2a2a; color: var(--err); }
@@ -124,27 +156,29 @@
       margin-top: 0.75rem;
       white-space: pre-wrap;
     }
-    .result-box {
-      margin-top: 0.75rem;
-      font-size: 0.875rem;
+    .result-box { margin-top: 0.75rem; font-size: 0.875rem; }
+    .job-status-list { margin: 0.75rem 0 0; padding: 0; list-style: none; }
+    .job-status-list li {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.4rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.85rem;
     }
-    .result-box a { color: var(--accent); }
+    .hint { color: var(--muted); font-size: 0.85rem; margin: 0 0 0.75rem; }
   </style>
 </head>
 <body>
   <div class="wrap">
     <h1>StarNews Pipeline</h1>
-    <p class="subtitle">Gala.de URL einfügen, Datum wählen, Pipeline starten.</p>
+    <p class="subtitle">Mehrere Artikel gleichzeitig — Avatar pro Job wählen.</p>
 
     <div class="card">
       <dl class="meta">
         <div>
-          <dt>Nächster Avatar</dt>
-          <dd>{{ next_avatar }}</dd>
-        </div>
-        <div>
-          <dt>Stimme</dt>
-          <dd>{{ next_voice }}</dd>
+          <dt>Vorschlag</dt>
+          <dd>{{ next_avatar }} ({{ next_voice }})</dd>
         </div>
         <div>
           <dt>Letzter Avatar</dt>
@@ -154,19 +188,20 @@
           <dt>Output</dt>
           <dd>{{ startv_root }}/DD.MM/</dd>
         </div>
+        <div>
+          <dt>Audio-Name</dt>
+          <dd>Avatar_DD.MM.mp3</dd>
+        </div>
       </dl>
     </div>
 
     <div class="card">
-      <form id="run-form">
-        <label for="url">Gala.de Artikel-URL</label>
-        <input type="url" id="url" name="url" placeholder="https://www.gala.de/..." required>
-
-        <label for="date">Datum (DD.MM)</label>
-        <input type="text" id="date" name="date" placeholder="01.07" pattern="\d{2}\.\d{2}" required>
-
-        <button type="submit" id="run-btn">Pipeline starten</button>
-      </form>
+      <p class="hint">Bis zu 7 Jobs. Jeder braucht URL, Datum und Avatar. Audio wird z.B. als <code>Tim_29.07.mp3</code> gespeichert.</p>
+      <div id="jobs"></div>
+      <div class="actions">
+        <button type="button" class="secondary" id="add-job">+ Job hinzufügen</button>
+        <button type="button" id="run-btn">Pipeline starten</button>
+      </div>
     </div>
 
     <div class="card">
@@ -175,6 +210,7 @@
         <span id="status-pill" class="status-pill status-idle">idle</span>
       </div>
       <p id="message" style="margin:0 0 0.75rem;color:var(--muted);font-size:0.9rem;"></p>
+      <ul class="job-status-list" id="job-status"></ul>
       <pre id="log"></pre>
       <div id="error" class="error-box"></div>
       <div id="result" class="result-box"></div>
@@ -182,27 +218,99 @@
   </div>
 
   <script>
-    const form = document.getElementById("run-form");
+    const AVATARS = {{ avatars | tojson }};
+    const DEFAULT_AVATAR = {{ next_avatar_key | tojson }};
+    const jobsEl = document.getElementById("jobs");
     const runBtn = document.getElementById("run-btn");
+    const addBtn = document.getElementById("add-job");
     const statusPill = document.getElementById("status-pill");
     const messageEl = document.getElementById("message");
+    const jobStatusEl = document.getElementById("job-status");
     const logEl = document.getElementById("log");
     const errorEl = document.getElementById("error");
     const resultEl = document.getElementById("result");
     let pollTimer = null;
+    let jobCount = 0;
 
     function todayDDMM() {
       const d = new Date();
-      const day = String(d.getDate()).padStart(2, "0");
-      const month = String(d.getMonth() + 1).padStart(2, "0");
-      return `${day}.${month}`;
+      return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}`;
     }
 
-    document.getElementById("date").value = todayDDMM();
+    function avatarOptions(selected) {
+      return AVATARS.map((a) =>
+        `<option value="${a.key}" ${a.key === selected ? "selected" : ""}>${a.name} — ${a.voice}</option>`
+      ).join("");
+    }
+
+    function addJob(preset = {}) {
+      if (jobsEl.children.length >= 7) return;
+      jobCount += 1;
+      const id = jobCount;
+      const wrap = document.createElement("div");
+      wrap.className = "job";
+      wrap.dataset.jobId = String(id);
+      wrap.innerHTML = `
+        <div class="job-head">
+          <span>Job ${jobsEl.children.length + 1}</span>
+          <button type="button" class="danger remove-job">Entfernen</button>
+        </div>
+        <div class="job-grid">
+          <div>
+            <label>Gala.de URL</label>
+            <input type="url" class="job-url" placeholder="https://www.gala.de/..." value="${preset.url || ""}" required>
+          </div>
+          <div>
+            <label>Datum (DD.MM)</label>
+            <input type="text" class="job-date" placeholder="29.07" pattern="\\d{2}\\.\\d{2}" value="${preset.date || todayDDMM()}" required>
+          </div>
+          <div>
+            <label>Avatar</label>
+            <select class="job-avatar">${avatarOptions(preset.avatar || DEFAULT_AVATAR)}</select>
+          </div>
+        </div>
+      `;
+      wrap.querySelector(".remove-job").addEventListener("click", () => {
+        if (jobsEl.children.length <= 1) return;
+        wrap.remove();
+        renumberJobs();
+      });
+      jobsEl.appendChild(wrap);
+      renumberJobs();
+      addBtn.disabled = jobsEl.children.length >= 7;
+    }
+
+    function renumberJobs() {
+      [...jobsEl.children].forEach((el, i) => {
+        el.querySelector(".job-head span").textContent = `Job ${i + 1}`;
+      });
+      addBtn.disabled = jobsEl.children.length >= 7;
+    }
+
+    function collectJobs() {
+      return [...jobsEl.children].map((el) => ({
+        url: el.querySelector(".job-url").value.trim(),
+        date: el.querySelector(".job-date").value.trim(),
+        avatar: el.querySelector(".job-avatar").value,
+      }));
+    }
 
     function setStatus(status) {
       statusPill.textContent = status;
       statusPill.className = `status-pill status-${status}`;
+    }
+
+    function renderJobStatuses(jobs) {
+      if (!jobs || !jobs.length) {
+        jobStatusEl.innerHTML = "";
+        return;
+      }
+      jobStatusEl.innerHTML = jobs.map((j) => `
+        <li>
+          <span>${j.date} · ${j.avatar_key}${j.result ? " · " + (j.result.audio_path || "").split(/[\\\\/]/).pop() : ""}</span>
+          <span class="status-pill status-${j.status}">${j.status}</span>
+        </li>
+      `).join("");
     }
 
     async function pollProgress() {
@@ -213,27 +321,29 @@
         messageEl.textContent = data.message || "";
         logEl.textContent = (data.log || []).join("\n");
         logEl.scrollTop = logEl.scrollHeight;
+        errorEl.textContent = data.error || "";
+        renderJobStatuses(data.jobs);
 
-        if (data.error) {
-          errorEl.textContent = data.error;
-        } else {
-          errorEl.textContent = "";
+        const results = data.results && data.results.length
+          ? data.results
+          : (data.result ? [data.result] : []);
+        if (results.length) {
+          resultEl.innerHTML = results.map((r) => `
+            <div style="margin-bottom:0.5rem;">
+              <strong>${r.date}</strong> · ${r.avatar_name}<br>
+              Ordner: <code>${r.day_dir}</code><br>
+              Audio: <code>${r.audio_path ? r.audio_path.split(/[\\\\/]/).pop() : "—"}</code>
+            </div>
+          `).join("");
         }
 
-        if (data.result) {
-          const r = data.result;
-          resultEl.innerHTML = `
-            <strong>Fertig.</strong><br>
-            Ordner: <code>${r.day_dir}</code><br>
-            Avatar: ${r.avatar_name} · Video: ${r.video_path ? r.video_path.split("/").pop() : "—"}
-          `;
-        }
-
-        if (data.status === "running") {
+        if (data.status === "running" || data.running) {
           runBtn.disabled = true;
-          pollTimer = setTimeout(pollProgress, 2000);
+          addBtn.disabled = true;
+          pollTimer = setTimeout(pollProgress, 1500);
         } else {
           runBtn.disabled = false;
+          addBtn.disabled = jobsEl.children.length >= 7;
           if (pollTimer) clearTimeout(pollTimer);
         }
       } catch (err) {
@@ -242,29 +352,31 @@
       }
     }
 
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
+    addBtn.addEventListener("click", () => addJob());
+    runBtn.addEventListener("click", async () => {
       errorEl.textContent = "";
       resultEl.textContent = "";
+      const jobs = collectJobs();
+      if (!jobs.length) return;
+      for (const [i, job] of jobs.entries()) {
+        if (!job.url || !job.date || !job.avatar) {
+          errorEl.textContent = `Job ${i + 1}: URL, Datum und Avatar sind Pflicht.`;
+          return;
+        }
+      }
+
       runBtn.disabled = true;
       setStatus("running");
-      messageEl.textContent = "Starte Pipeline...";
-
-      const payload = {
-        url: document.getElementById("url").value.trim(),
-        date: document.getElementById("date").value.trim(),
-      };
+      messageEl.textContent = `Starte ${jobs.length} Job(s)...`;
 
       try {
         const res = await fetch("/api/run", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body: JSON.stringify({ jobs }),
         });
         const data = await res.json();
-        if (!res.ok) {
-          throw new Error(data.error || "Start fehlgeschlagen");
-        }
+        if (!res.ok) throw new Error(data.error || "Start fehlgeschlagen");
         pollProgress();
       } catch (err) {
         setStatus("failed");
@@ -273,6 +385,7 @@
       }
     });
 
+    addJob();
     pollProgress();
   </script>
 </body>

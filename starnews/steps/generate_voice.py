@@ -1,17 +1,10 @@
 from __future__ import annotations
 
-import re
-from datetime import datetime, timezone
 from pathlib import Path
 
 import httpx
 
 from starnews.config import AvatarConfig, Settings
-
-
-def _voice_slug(name: str) -> str:
-    slug = re.sub(r"[^\w\s-]", "", name).strip().replace(" ", "_")
-    return slug[:60] or "voice"
 
 
 def generate_voice(
@@ -29,8 +22,7 @@ def generate_voice(
         )
 
     assets_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.now(timezone.utc).strftime("%Y_%m_%dT%H_%M_%S")
-    filename = f"ElevenLabs_{timestamp}_{_voice_slug(avatar.elevenlabs_voice_name)}.mp3"
+    filename = f"{avatar.display_name}_{date_str}.mp3"
     output_path = assets_dir / filename
 
     url = f"https://api.elevenlabs.io/v1/text-to-speech/{avatar.elevenlabs_voice_id}"

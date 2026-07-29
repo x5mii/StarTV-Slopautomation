@@ -14,9 +14,15 @@ from starnews.config import (
     missing_setup_fields,
     save_setup_config,
 )
-from starnews.pipeline import get_run_state, run_pipeline_tracked, save_run_manifest
+from starnews.pipeline import (
+    get_run_state,
+    run_batch_tracked,
+    run_pipeline_tracked,
+    save_run_manifest,
+)
 from starnews.rotation import load_state, next_avatar
 from starnews.secrets import env_to_config_local, parse_env_text
+from starnews.steps.prepare_folder import normalize_date
 
 
 def create_app(settings: Settings) -> Flask:
@@ -27,6 +33,16 @@ def create_app(settings: Settings) -> Flask:
 
     def current_settings() -> Settings:
         return app.config["STARNNEWS_SETTINGS"]
+
+    def avatar_options(settings_ref: Settings) -> list[dict]:
+        return [
+            {
+                "key": key,
+                "name": settings_ref.avatars[key].display_name,
+                "voice": settings_ref.avatars[key].elevenlabs_voice_name,
+            }
+            for key in settings_ref.avatar_rotation
+        ]
 
     @app.before_request
     def require_setup():
@@ -96,26 +112,68 @@ def create_app(settings: Settings) -> Flask:
     def index():
         settings_ref = current_settings()
         state = load_state(settings_ref)
-        _, next_av = next_avatar(settings_ref)
+        next_key, next_av = next_avatar(settings_ref)
         return render_template(
             "index.html",
             last_avatar=state.get("last_avatar"),
             next_avatar=next_av.display_name,
+            next_avatar_key=next_key,
             next_voice=next_av.elevenlabs_voice_name,
             startv_root=str(settings_ref.startv_root),
+            avatars=avatar_options(settings_ref),
         )
+
+    def _parse_jobs(payload: dict) -> tuple[list[dict] | None, str | None]:
+        settings_ref = current_settings()
+        jobs_raw = payload.get("jobs")
+        if not jobs_raw:
+            url = (payload.get("url") or "").strip()
+            date = (payload.get("date") or "").strip()
+            avatar_key = (payload.get("avatar") or payload.get("avatar_key") or "").strip()
+            if url or date:
+                jobs_raw = [{"url": url, "date": date, "avatar": avatar_key}]
+
+        if not isinstance(jobs_raw, list) or not jobs_raw:
+            return None, "At least one job is required"
+
+        if len(jobs_raw) > 7:
+            return None, "Maximum 7 jobs at once"
+
+        jobs: list[dict] = []
+        dates: list[str] = []
+        for i, raw in enumerate(jobs_raw, start=1):
+            if not isinstance(raw, dict):
+                return None, f"Job {i}: invalid payload"
+            url = str(raw.get("url") or "").strip()
+            date = str(raw.get("date") or "").strip()
+            avatar_key = str(
+                raw.get("avatar") or raw.get("avatar_key") or ""
+            ).strip().lower()
+            if not url:
+                return None, f"Job {i}: URL is required"
+            if not date:
+                return None, f"Job {i}: Date is required (DD.MM)"
+            try:
+                date = normalize_date(date)
+            except Exception:
+                return None, f"Job {i}: Date must be DD.MM"
+            if not avatar_key:
+                return None, f"Job {i}: Avatar is required"
+            if avatar_key not in settings_ref.avatars:
+                return None, f"Job {i}: Unknown avatar '{avatar_key}'"
+            if date in dates:
+                return None, f"Job {i}: Duplicate date {date}"
+            dates.append(date)
+            jobs.append({"url": url, "date": date, "avatar_key": avatar_key})
+        return jobs, None
 
     @app.post("/api/run")
     def api_run():
         settings_ref = current_settings()
         payload = request.get_json(silent=True) or {}
-        url = (payload.get("url") or request.form.get("url") or "").strip()
-        date = (payload.get("date") or request.form.get("date") or "").strip()
-
-        if not url:
-            return jsonify({"error": "URL is required"}), 400
-        if not date:
-            return jsonify({"error": "Date is required (DD.MM)"}), 400
+        jobs, error = _parse_jobs(payload)
+        if error or jobs is None:
+            return jsonify({"error": error or "Invalid jobs"}), 400
 
         with _lock:
             if _running["active"]:
@@ -124,8 +182,17 @@ def create_app(settings: Settings) -> Flask:
 
         def worker():
             try:
-                result = run_pipeline_tracked(url, date, settings=settings_ref)
-                save_run_manifest(result.day_dir, result)
+                if len(jobs) == 1:
+                    job = jobs[0]
+                    result = run_pipeline_tracked(
+                        job["url"],
+                        job["date"],
+                        settings=settings_ref,
+                        avatar_key=job["avatar_key"],
+                    )
+                    save_run_manifest(result.day_dir, result)
+                else:
+                    run_batch_tracked(jobs, settings=settings_ref)
             except Exception:
                 run_state = get_run_state()
                 if not run_state.error:
@@ -136,7 +203,7 @@ def create_app(settings: Settings) -> Flask:
 
         thread = threading.Thread(target=worker, daemon=True)
         thread.start()
-        return jsonify({"status": "started"})
+        return jsonify({"status": "started", "jobs": len(jobs)})
 
     @app.get("/api/progress")
     def api_progress():
@@ -147,7 +214,9 @@ def create_app(settings: Settings) -> Flask:
                 "message": run_state.message,
                 "error": run_state.error,
                 "result": run_state.result,
-                "log": run_state.log[-80:],
+                "results": run_state.results,
+                "jobs": run_state.jobs,
+                "log": run_state.log[-120:],
                 "running": _running["active"],
             }
         )
@@ -165,6 +234,7 @@ def create_app(settings: Settings) -> Flask:
                 "next_voice": next_av.elevenlabs_voice_name,
                 "heygen_mode": settings_ref.heygen_mode,
                 "startv_root": str(settings_ref.startv_root),
+                "avatars": avatar_options(settings_ref),
                 "keys": {
                     "gemini": bool(settings_ref.gemini_api_key),
                     "elevenlabs": bool(settings_ref.elevenlabs_api_key),

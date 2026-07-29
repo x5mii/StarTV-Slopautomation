@@ -52,10 +52,13 @@ class PipelineRunState:
     message: str = ""
     error: str | None = None
     result: dict | None = None
+    results: list[dict] = field(default_factory=list)
+    jobs: list[dict] = field(default_factory=list)
     log: list[str] = field(default_factory=list)
 
 
 _run_state = PipelineRunState()
+_run_state_lock = __import__("threading").Lock()
 
 
 def get_run_state() -> PipelineRunState:
@@ -67,13 +70,31 @@ def _reset_run_state() -> None:
     _run_state = PipelineRunState()
 
 
+def _append_log(msg: str) -> None:
+    with _run_state_lock:
+        _run_state.message = msg
+        _run_state.log.append(msg)
+
+
 def _log(msg: str, on_progress: ProgressCallback | None) -> None:
-    _run_state.message = msg
-    _run_state.log.append(msg)
     if on_progress:
         on_progress(msg)
     else:
+        _append_log(msg)
         print(msg)
+
+
+def _find_existing_audio(assets_dir: Path, avatar_name: str, date_str: str) -> Path | None:
+    preferred = assets_dir / f"{avatar_name}_{date_str}.mp3"
+    if preferred.exists():
+        return preferred
+    matches = sorted(assets_dir.glob(f"{avatar_name}_*.mp3"))
+    if matches:
+        return matches[-1]
+    legacy = sorted(assets_dir.glob("ElevenLabs*.mp3"))
+    if legacy:
+        return legacy[-1]
+    return None
 
 
 def _runs_dir(settings: Settings) -> Path:
@@ -152,9 +173,9 @@ def run_pipeline(
         on_progress,
     )
 
-    existing_audio = sorted(assets_dir.glob("ElevenLabs*.mp3"))
-    if resume and existing_audio:
-        audio_path = existing_audio[-1]
+    existing_audio = _find_existing_audio(assets_dir, avatar.display_name, date_str)
+    if resume and existing_audio is not None:
+        audio_path = existing_audio
         _log(f"Reusing voice audio: {audio_path.name}", on_progress)
     else:
         _log("Generating voice with ElevenLabs...", on_progress)
@@ -216,16 +237,114 @@ def run_pipeline_tracked(
     date_str: str,
     *,
     settings: Settings | None = None,
+    avatar_key: str | None = None,
+    resume: bool = False,
 ) -> PipelineResult:
     _reset_run_state()
     _run_state.status = "running"
     try:
-        # Do not pass _log here — it takes (msg, on_progress), but callbacks
-        # must be Callable[[str], None]. _log still updates _run_state itself.
-        result = run_pipeline(url, date_str, settings=settings, on_progress=None)
+        result = run_pipeline(
+            url,
+            date_str,
+            settings=settings,
+            on_progress=None,
+            avatar_key=avatar_key,
+            resume=resume,
+        )
         _run_state.status = "completed"
         _run_state.result = result.to_dict()
+        _run_state.results = [result.to_dict()]
         return result
+    except Exception as exc:
+        _run_state.status = "failed"
+        _run_state.error = str(exc)
+        _run_state.log.append(traceback.format_exc())
+        raise
+
+
+def run_batch_tracked(
+    jobs: list[dict],
+    *,
+    settings: Settings | None = None,
+    max_workers: int = 7,
+) -> list[tuple[str, PipelineResult | None, str | None]]:
+    """Run web batch jobs. Each job: {url, date, avatar_key}."""
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    settings = settings or load_settings()
+    _reset_run_state()
+    _run_state.status = "running"
+    _run_state.jobs = [
+        {
+            "date": normalize_date(str(job["date"])),
+            "url": str(job["url"]),
+            "avatar_key": str(job["avatar_key"]),
+            "status": "pending",
+            "message": "",
+            "error": None,
+            "result": None,
+        }
+        for job in jobs
+    ]
+    _run_state.message = f"Starting {len(jobs)} job(s)..."
+
+    results: list[tuple[str, PipelineResult | None, str | None]] = []
+
+    def worker(index: int, job: dict) -> tuple[str, PipelineResult | None, str | None]:
+        date = normalize_date(str(job["date"]))
+        url = str(job["url"])
+        avatar_key = str(job["avatar_key"])
+        prefix = f"[{date}/{avatar_key}]"
+
+        with _run_state_lock:
+            _run_state.jobs[index]["status"] = "running"
+            _run_state.jobs[index]["message"] = "running"
+
+        def progress(msg: str) -> None:
+            line = f"{prefix} {msg}"
+            _append_log(line)
+            with _run_state_lock:
+                _run_state.jobs[index]["message"] = msg
+            print(line)
+
+        try:
+            result = run_pipeline(
+                url,
+                date,
+                settings=settings,
+                on_progress=progress,
+                avatar_key=avatar_key,
+            )
+            save_run_manifest(result.day_dir, result)
+            with _run_state_lock:
+                _run_state.jobs[index]["status"] = "completed"
+                _run_state.jobs[index]["result"] = result.to_dict()
+                _run_state.results.append(result.to_dict())
+            return date, result, None
+        except Exception as exc:
+            err = str(exc)
+            progress(f"FAILED: {err}")
+            with _run_state_lock:
+                _run_state.jobs[index]["status"] = "failed"
+                _run_state.jobs[index]["error"] = err
+            return date, None, err
+
+    try:
+        with ThreadPoolExecutor(max_workers=min(max_workers, len(jobs))) as pool:
+            futures = [
+                pool.submit(worker, i, job) for i, job in enumerate(_run_state.jobs)
+            ]
+            for future in as_completed(futures):
+                results.append(future.result())
+        failures = sum(1 for _, result, _ in results if result is None)
+        if failures:
+            _run_state.status = "failed"
+            _run_state.error = f"{failures} job(s) failed"
+            _run_state.message = _run_state.error
+        else:
+            _run_state.status = "completed"
+            _run_state.message = f"All {len(results)} job(s) done"
+        return results
     except Exception as exc:
         _run_state.status = "failed"
         _run_state.error = str(exc)
