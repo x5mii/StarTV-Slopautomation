@@ -5,6 +5,13 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
+if [ ! -f "starnews/team_defaults.yaml" ]; then
+  echo "Missing starnews/team_defaults.yaml"
+  echo "Copy: cp starnews/team_defaults.example.yaml starnews/team_defaults.yaml"
+  echo "Then add your API keys before building."
+  exit 1
+fi
+
 if ! python3 -c "import PyInstaller" 2>/dev/null; then
   echo "Installing PyInstaller..."
   python3 -m pip install pyinstaller

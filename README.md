@@ -37,6 +37,10 @@ No Python, Git, or `.env` file needed.
 From the repo on **macOS** (builds the Mac app) or **Windows** (builds the Windows app):
 
 ```bash
+# One-time: copy team secrets (gitignored — GitHub blocks API keys in the repo)
+cp starnews/team_defaults.example.yaml starnews/team_defaults.yaml
+# edit starnews/team_defaults.yaml with real keys
+
 # macOS
 chmod +x scripts/build-release.sh scripts/Start-StarNews.command
 ./scripts/build-release.sh
@@ -149,7 +153,9 @@ starnews status
 
 ## API keys
 
-**Coworkers:** keys are in `starnews/team_defaults.yaml` (built into the app). Nothing to configure.
+**Coworkers:** keys are baked into the zip you send them (from `starnews/team_defaults.yaml` at build time).
+
+**Team lead:** maintain `starnews/team_defaults.yaml` locally (gitignored — copy from `team_defaults.example.yaml`).
 
 **Per user:** only `config.local.yaml` with the output folder (created automatically on first launch).
 
