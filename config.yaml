@@ -21,8 +21,8 @@ avatars:
     heygen_draft_name: Chris_01.07
   annie:
     display_name: Annie
-    elevenlabs_voice_name: Annie
-    heygen_draft_name: Annie
+    elevenlabs_voice_name: Emilia - Positive and Thoughtful
+    heygen_draft_name: Annie_29.08
 
 gemini:
   model: gemini-2.5-flash
