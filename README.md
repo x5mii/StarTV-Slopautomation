@@ -1,192 +1,147 @@
-# StarTV-Slopautomation
+# StarNews Pipeline
 
-Daily StarNews pipeline: Gala.de → Gemini script → ElevenLabs voice → HeyGen video (manual step).
+StarNews automatisiert: Gala.de → Skript → ElevenLabs Stimme → HeyGen (manuell).
 
-**Repo:** [github.com/x5mii/StarTV-Slopautomation](https://github.com/x5mii/StarTV-Slopautomation)
-
-> **Note:** Install instructions below are on the `cursor/starnews-daily-pipeline` branch. Merge to `main` or download the latest branch zip if GitHub `main` README looks outdated.
+**GitHub:** https://github.com/x5mii/StarTV-Slopautomation
 
 ---
 
-## For coworkers — install (Mac & Windows)
+# Installieren & starten (für alle im Team)
 
-No Python, Git, or manual typing of API keys.
-
-### What you need from your team lead
-
-1. **`StarNews-macOS.zip`** or **`StarNews-Windows.zip`**
-2. **`team-secrets.env`** — one file with all API keys (sent privately, e.g. WhatsApp/Drive)
-
-### macOS
-
-1. Unzip **`StarNews-macOS.zip`**
-2. Double-click **`Start-StarNews.command`**
-3. Browser opens → **Setup**:
-   - **Load** `team-secrets.env` (or paste its content)
-   - Enter your **StarTV folder**, e.g. `/Users/YourName/Documents/StarTV`
-   - Click **Speichern & starten**
-4. Paste a Gala.de URL → **Pipeline starten**
-
-### Windows
-
-1. Unzip **`StarNews-Windows.zip`**
-2. Double-click **`Start-StarNews.bat`**
-   - If Windows SmartScreen appears: **More info → Run anyway**
-3. Browser opens → **Setup**:
-   - **Load** `team-secrets.env` (or paste its content)
-   - Enter your **StarTV folder**, e.g. `C:/Users/YourName/Documents/StarTV`
-   - Use **forward slashes** in the path
-   - Click **Speichern & starten**
-4. Paste a Gala.de URL → **Pipeline starten**
-
-Settings are saved locally in `config.local.yaml` next to the app — you only do this once.
+Du brauchst **einmalig**: Python + Git (Links unten).  
+Danach: **einen Befehl kopieren → Terminal einfügen → Enter**.
 
 ---
 
-## For team lead — build & share
+## Windows
 
-Build on **macOS** for Mac coworkers, on **Windows** for Windows coworkers.
+### Einmal installieren
 
-### 1. Prepare secrets (one-time)
-
-```bash
-cp team-secrets.env.example team-secrets.env
-# Fill in real API keys in team-secrets.env
-```
-
-Send **`team-secrets.env`** privately to each coworker. Do **not** commit the filled file to GitHub (secret scanning blocks it).
-
-Optional for builds with keys baked in:
-
-```bash
-cp starnews/team_defaults.example.yaml starnews/team_defaults.yaml
-# Same keys as team-secrets.env — then coworkers only pick their folder
-```
-
-### 2. Build the app
-
-**macOS:**
-
-```bash
-chmod +x scripts/build-release.sh scripts/Start-StarNews.command
-./scripts/build-release.sh
-```
-
-**Windows (PowerShell):**
+1. **`Windows-Taste`** drücken, **`powershell`** tippen, **Enter**
+2. **Alles** markieren, kopieren, ins schwarze Fenster **rechtsklicken** (einfügen), **Enter**:
 
 ```powershell
-.\scripts\build-release.ps1
+git clone -b cursor/starnews-daily-pipeline https://github.com/x5mii/StarTV-Slopautomation.git $HOME\StarTV-Slopautomation; cd $HOME\StarTV-Slopautomation; py -m pip install -e .; starnews web
 ```
 
-Output:
+> Geht `py` nicht? Ersetze `py` durch `python` und nochmal Enter.
 
-| Platform | Folder | Zip |
-|----------|--------|-----|
-| macOS | `release/StarNews-macOS/` | `release/StarNews-macOS.zip` |
-| Windows | `release/StarNews-Windows/` | `release/StarNews-Windows.zip` |
+3. **Browser** öffnet sich automatisch
+4. **Einmal einrichten** (nur beim ersten Mal):
+   - Datei **`team-secrets.env`** vom Team-Lead laden **oder** Inhalt einfügen  
+     *(bekommst du per WhatsApp/Drive — nicht selbst tippen)*
+   - **StarTV Ordner** eintragen, z.B. `C:/Users/DeinName/Documents/StarTV`
+   - **Speichern & starten** klicken
 
-Share the **zip + team-secrets.env** with coworkers.
+### Jeden Tag starten
 
----
+1. **`Windows-Taste`** → **`powershell`** → **Enter**
+2. Kopieren, einfügen, **Enter**:
 
-## Voice mapping
-
-| Avatar | ElevenLabs voice | HeyGen draft |
-|--------|------------------|--------------|
-| Tim | Philip, friendly voice | Tim 02.07 |
-| Leon | Odeon | Leo 30.06 |
-| Chris | Hans-Peter Lorenz – Modern News Voice | Chris_01.07 |
-| Annie | Emilia Roth | Annie_29.08 |
-
-Rotation: **Tim → Leon → Chris → Annie → repeat**
-
----
-
-## What it does
-
-| Step | Tool | Automated? |
-|------|------|------------|
-| Scrape Gala.de | pipeline | yes |
-| Script, title, caption, hashtags | Gemini | yes |
-| Moderator voice | ElevenLabs | yes |
-| Moderator video | HeyGen | manual (default) |
-
-Pictures, Premiere, and exports stay manual.
-
-**Output per day:**
-
-```
-StarTV/29.07/
-  skript.docx
-  assets/
-    ElevenLabs_....mp3
-    Tim_29.07_1080p.mp4    ← add after HeyGen
+```powershell
+cd $HOME\StarTV-Slopautomation; starnews web
 ```
 
----
-
-## Commands
-
-| Command | Description |
-|---------|-------------|
-| `starnews web` | Browser UI (recommended) |
-| `starnews setup` | CLI setup — import secrets + folder |
-| `starnews import-secrets team-secrets.env --folder C:/Users/You/Documents/StarTV` | Import .env file |
-| `starnews run URL --date DD.MM` | Run one article |
-| `starnews batch -j DATE URL ...` | Up to 7 parallel |
-| `starnews status` | Check config |
+3. Gala-URL einfügen → Datum → **Pipeline starten**
 
 ---
 
-## Developer install (optional)
+## Mac
+
+### Einmal installieren
+
+1. **`Spotlight`** (`Cmd + Leertaste`) → **`Terminal`** → **Enter**
+2. **Alles** kopieren, einfügen, **Enter**:
 
 ```bash
-git clone https://github.com/x5mii/StarTV-Slopautomation.git
-cd StarTV-Slopautomation
-git checkout cursor/starnews-daily-pipeline   # latest install flow
-python3 -m pip install -e .                   # Mac
-# py -m pip install -e .                      # Windows
-
-cp team-secrets.env.example team-secrets.env  # add keys
-starnews import-secrets team-secrets.env --folder ~/Documents/StarTV
-starnews web
+git clone -b cursor/starnews-daily-pipeline https://github.com/x5mii/StarTV-Slopautomation.git ~/StarTV-Slopautomation && cd ~/StarTV-Slopautomation && python3 -m pip install -e . && starnews web
 ```
 
-Legacy: `~/.starnews/.env` still works and overrides team defaults.
+3. **Browser** öffnet sich
+4. **Einmal einrichten** (nur beim ersten Mal):
+   - **`team-secrets.env`** laden oder einfügen (vom Team-Lead)
+   - **StarTV Ordner**, z.B. `/Users/DeinName/Documents/StarTV`
+   - **Speichern & starten**
+
+### Jeden Tag starten
+
+1. **Terminal** öffnen
+2. Kopieren, einfügen, **Enter**:
+
+```bash
+cd ~/StarTV-Slopautomation && starnews web
+```
 
 ---
 
-## Daily workflow
+## Was du vom Team-Lead brauchst
 
-1. **Run pipeline** — web UI or `starnews run "URL" --date 29.07`
-2. **HeyGen (manual)** — upload MP3 from `assets/` into today's avatar draft → save MP4 as `{Avatar}_{date}_1080p.mp4`
-3. **Premiere / export** — unchanged
-
----
-
-## Troubleshooting
-
-| Problem | Fix |
-|---------|-----|
-| README on GitHub looks old | Use branch `cursor/starnews-daily-pipeline` or merge it to `main` |
-| Windows blocks `.bat` | More info → Run anyway |
-| `Setup incomplete: secrets` | Load or paste `team-secrets.env` |
-| Wrong output folder | Delete `config.local.yaml` and run setup again |
-| `'starnews' is not recognized` | Use the zip build, or re-run `pip install -e .` |
+| Was | Wofür |
+|-----|--------|
+| **`team-secrets.env`** | API-Keys — **einmal** in der Einrichtung laden (nicht abtippen!) |
 
 ---
 
-## Project layout
+## Einmalig: Python & Git installieren
 
-```
-StarTV-Slopautomation/
-  config.yaml
-  team-secrets.env.example    ← template for team lead
-  starnews/team_defaults.example.yaml
-  scripts/build-release.sh    ← Mac build
-  scripts/build-release.ps1   ← Windows build
-  scripts/Start-StarNews.command
-  scripts/Start-StarNews.bat
+Nur nötig, wenn der Befehl oben mit „nicht gefunden“ / „not recognized“ abbricht.
+
+| Programm | Windows | Mac |
+|----------|---------|-----|
+| **Python** | [python.org/downloads](https://www.python.org/downloads/) — Haken: **Add to PATH** | [python.org/downloads](https://www.python.org/downloads/) |
+| **Git** | [git-scm.com/download/win](https://git-scm.com/download/win) | Terminal: `xcode-select --install` |
+
+---
+
+## Stimmen & Avatare
+
+| Avatar | ElevenLabs Stimme | HeyGen Draft |
+|--------|-------------------|--------------|
+| Tim | Philip, friendly voice | Tim 02.07 |
+| Leon | Odeon | Leo 30.06 |
+| Chris | Hans-Peter Lorenz | Chris_01.07 |
+| Annie | Emilia Roth | Annie_29.08 |
+
+Rotation: Tim → Leon → Chris → Annie → …
+
+---
+
+## Nach dem Pipeline-Lauf (HeyGen)
+
+1. [app.heygen.com](https://app.heygen.com) öffnen
+2. Draft für heutigen Avatar öffnen
+3. **Upload Audio** → MP3 aus `StarTV/DD.MM/assets/`
+4. Video speichern als `{Avatar}_DD.MM_1080p.mp4` im gleichen `assets/` Ordner
+
+---
+
+## Probleme?
+
+| Fehler | Lösung |
+|--------|--------|
+| `'git' is not recognized` | Git installieren (Tabelle oben) |
+| `'py' / 'python3' is not recognized` | Python installieren, Terminal neu öffnen |
+| `'starnews' is not recognized` | Nochmal Install-Befehl ausführen |
+| Setup: secrets fehlen | `team-secrets.env` laden oder einfügen |
+| Falscher Ordner | `config.local.yaml` im App-Ordner löschen, neu starten |
+
+---
+
+## Für Team-Lead (optional)
+
+**Zip-App ohne Terminal** (Windows-Build auf Windows-PC, Mac-Build auf Mac):
+
+```bash
+./scripts/build-release.sh      # Mac → release/StarNews-macOS.zip
+.\scripts\build-release.ps1     # Windows → release/StarNews-Windows.zip
 ```
 
-Local (not in git): `team-secrets.env`, `config.local.yaml`, `starnews/team_defaults.yaml`
+**Secrets-Datei erstellen:** `cp team-secrets.env.example team-secrets.env` → Keys eintragen → privat verschicken.
+
+**Alle Befehle:**
+
+| Befehl | Beschreibung |
+|--------|--------------|
+| `starnews web` | Browser-Oberfläche |
+| `starnews run "URL" --date 29.07` | Ein Artikel |
+| `starnews status` | Einstellungen prüfen |
