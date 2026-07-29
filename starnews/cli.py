@@ -4,7 +4,12 @@ from pathlib import Path
 
 import click
 
-from starnews.config import load_settings
+from starnews.config import (
+    default_config_local_path,
+    is_setup_complete,
+    load_settings,
+    save_folder_setup,
+)
 from starnews.pipeline import run_batch, run_pipeline, save_run_manifest
 from starnews.rotation import load_state, next_avatar
 
@@ -365,6 +370,35 @@ def heygen_avatars(config_path: Path | None) -> None:
 
 @main.command()
 @click.option(
+    "--config",
+    "config_path",
+    type=click.Path(exists=True, path_type=Path),
+    default=None,
+    help="Optional path to config.yaml",
+)
+def setup(config_path: Path | None) -> None:
+    """First-time setup — choose where daily StarTV folders are created."""
+    settings = load_settings(config_path)
+    target = default_config_local_path()
+
+    click.echo("StarNews setup")
+    click.echo("=" * 40)
+    click.echo("API keys are built in. Choose your output folder only.")
+    click.echo(f"Settings file: {target}")
+    click.echo("")
+
+    startv_root = click.prompt(
+        "StarTV output folder (daily folders like 29.07/ will be created here)",
+        default=str(settings.startv_root),
+    )
+
+    save_folder_setup(startv_root.strip(), target)
+    click.echo(f"\nSaved {target}")
+    click.echo("Run: starnews web   (or double-click Start-StarNews)")
+
+
+@main.command()
+@click.option(
     "--host",
     default=None,
     help="Bind host (default from config.yaml)",
@@ -384,13 +418,25 @@ def heygen_avatars(config_path: Path | None) -> None:
 )
 def web(host: str | None, port: int | None, config_path: Path | None) -> None:
     """Start the local web UI on localhost:8765."""
+    import webbrowser
+
     from starnews.web.app import create_app
 
     settings = load_settings(config_path)
     app = create_app(settings)
     bind_host = host or settings.web_host
     bind_port = port or settings.web_port
-    click.echo(f"StarNews web UI: http://{bind_host}:{bind_port}")
+    url = f"http://{bind_host}:{bind_port}"
+    click.echo(f"StarNews web UI: {url}")
+    if not is_setup_complete(settings):
+        click.echo("First run — choose your StarTV output folder in the browser.")
+        path = "/setup"
+    else:
+        path = "/"
+    try:
+        webbrowser.open(f"{url}{path}")
+    except Exception:
+        pass
     app.run(host=bind_host, port=bind_port, debug=False, threaded=True)
 
 

@@ -1,6 +1,10 @@
 __pycache__/
 *.py[cod]
 .env
+config.local.yaml
+team_defaults.yaml
+release/
+build/
 .venv/
 venv/
 dist/

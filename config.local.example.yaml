@@ -1,0 +1,6 @@
+# First-run setup creates this file automatically.
+# Only the StarTV output folder is per user — API keys are built into the app.
+
+paths:
+  startv_root: /Users/YOURNAME/Documents/StarTV
+  # Windows example: C:/Users/YOURNAME/Documents/StarTV

@@ -6,6 +6,7 @@ avatars:
     - tim
     - leon
     - chris
+    - annie
   tim:
     display_name: Tim
     elevenlabs_voice_name: Philip, friendly voice
@@ -18,6 +19,10 @@ avatars:
     display_name: Chris
     elevenlabs_voice_name: Hans-Peter Lorenz – Modern News Voice
     heygen_draft_name: Chris_01.07
+  annie:
+    display_name: Annie
+    elevenlabs_voice_name: Emilia Roth
+    heygen_draft_name: Annie_29.08
 
 gemini:
   model: gemini-2.5-flash

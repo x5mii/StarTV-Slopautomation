@@ -27,4 +27,4 @@ where = ["."]
 include = ["starnews*"]
 
 [tool.setuptools.package-data]
-starnews = ["web/templates/*.html"]
+starnews = ["web/templates/*.html", "team_defaults.yaml"]
