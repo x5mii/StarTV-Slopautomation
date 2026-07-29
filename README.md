@@ -1,6 +1,12 @@
 # StarTV-Slopautomation
 
-Automation for daily StarNews production on Mac.
+Daily StarNews pipeline: Gala.de article → Gemini script → ElevenLabs voice → HeyGen video (manual step).
+
+**Repo:** [github.com/x5mii/StarTV-Slopautomation](https://github.com/x5mii/StarTV-Slopautomation)
+
+Works on **macOS** and **Windows** (Python 3.10+).
+
+---
 
 ## What it does
 
@@ -8,142 +14,314 @@ Automation for daily StarNews production on Mac.
 |------|------|------------|
 | Scrape Gala.de article | pipeline | yes |
 | Script, title, caption, hashtags | Gemini | yes |
-| Moderator voice (Philip / Odeon / Hans-Peter) | ElevenLabs | yes |
-| Moderator video (draft look + lip-sync) | HeyGen | **manual** (default) or optional API |
+| Moderator voice | ElevenLabs | yes |
+| Moderator video (draft look) | HeyGen | manual (default) |
 
 Pictures, Premiere editing, and exports stay manual.
 
-## Output folder
+**Avatar rotation:** Tim → Leon → Chris → Annie → repeat.
 
-After `starnews run`, you get:
+---
 
-```
-/Users/samuel/Documents/StarTV/03.07/
-  skript.docx
-  assets/
-    ElevenLabs_2026_07_02T..._Philip_friendly_voice.mp3
-    Tim_03.07_1080p.mp4          ← you add this after HeyGen
-```
+## Requirements
 
-## Setup
+- **Python 3.10 or newer** — [python.org/downloads](https://www.python.org/downloads/)
+- **Git** — [git-scm.com](https://git-scm.com/)
+- API keys: [Google Gemini](https://aistudio.google.com/apikey), [ElevenLabs](https://elevenlabs.io/), optionally [HeyGen](https://app.heygen.com/)
+- Paid API credits on Gemini / ElevenLabs (and HeyGen if using auto mode)
 
-### 1. Install
+---
+
+## Installation
+
+### macOS
 
 ```bash
-cd ~/Projects/starnews-pipeline
+# 1. Clone
+git clone https://github.com/x5mii/StarTV-Slopautomation.git
+cd StarTV-Slopautomation
+
+# 2. Install (creates the `starnews` command)
 python3 -m pip install -e .
+
+# 3. Config folder + API keys
+mkdir -p ~/.starnews
+nano ~/.starnews/.env
 ```
 
-### 2. API keys
+Edit `config.yaml` — set your output folder, e.g.:
 
-Create `~/.starnews/.env` (never commit):
-
-```env
-GEMINI_API_KEY=...
-ELEVENLABS_API_KEY=...
-
-ELEVENLABS_VOICE_TIM=m0jFDzIcZy0rC88oAehX      # Philip, friendly voice
-ELEVENLABS_VOICE_LEON=XJ6WvkWn5AiImouUWf8S      # Odeon
-ELEVENLABS_VOICE_CHRIS=MLFHn2hZ3zKifXrugl26    # Hans-Peter Lorenz
-ELEVENLABS_VOICE_ANNIE=N8RXoLEWQWUCCrT8uDK7    # Annie
-
-# Only needed for heygen.mode: auto (not recommended):
-# HEYGEN_API_KEY=...
-# HEYGEN_AVATAR_TIM=...
-# HEYGEN_AVATAR_LEON=...
-# HEYGEN_AVATAR_CHRIS=...
+```yaml
+paths:
+  startv_root: /Users/YOURNAME/Documents/StarTV
 ```
 
-Voice mapping (automatic from rotation):
+### Windows
 
-| Avatar | ElevenLabs voice |
-|--------|------------------|
-| Tim | Philip |
-| Leon | Odeon |
-| Chris | Hans-Peter Lorenz – Modern News Voice |
-| Annie | Annie |
+Open **PowerShell** or **Command Prompt**:
 
-Avatar rotation state is stored in `~/.starnews/state.json` (Tim → Leon → Chris → Annie → Tim).
+```powershell
+# 1. Clone
+git clone https://github.com/x5mii/StarTV-Slopautomation.git
+cd StarTV-Slopautomation
 
-### 3. Verify setup
+# 2. Install (use py if python is not on PATH)
+py -m pip install -e .
+
+# 3. Config folder + API keys
+mkdir $env:USERPROFILE\.starnews
+notepad $env:USERPROFILE\.starnews\.env
+```
+
+Edit `config.yaml` — set your output folder, e.g.:
+
+```yaml
+paths:
+  startv_root: C:/Users/YOURNAME/Documents/StarTV
+```
+
+Use forward slashes in YAML paths on Windows (`C:/Users/...`).
+
+### Verify install
 
 ```bash
+starnews --version
 starnews status
 ```
 
-### 3. HeyGen mode
+---
 
-In `config.yaml`:
+## API keys (`.env`)
+
+Create a file:
+
+| OS | Path |
+|----|------|
+| macOS / Linux | `~/.starnews/.env` |
+| Windows | `%USERPROFILE%\.starnews\.env` |
+
+Example (fill in your own keys — **never commit this file**):
+
+```env
+GEMINI_API_KEY=your_gemini_key
+ELEVENLABS_API_KEY=your_elevenlabs_key
+
+# One voice ID per avatar (from ElevenLabs → Voices)
+ELEVENLABS_VOICE_TIM=your_tim_voice_id
+ELEVENLABS_VOICE_LEON=your_leon_voice_id
+ELEVENLABS_VOICE_CHRIS=your_chris_voice_id
+ELEVENLABS_VOICE_ANNIE=your_annie_voice_id
+
+# Optional — only for heygen.mode: auto in config.yaml
+# HEYGEN_API_KEY=...
+# HEYGEN_AVATAR_TIM=...
+```
+
+Copy avatar names, draft names, and voice labels from `config.yaml` in the repo and adjust for your team.
+
+---
+
+## Configuration (`config.yaml`)
+
+After cloning, edit in the repo folder:
+
+- **`paths.startv_root`** — where daily folders are created (`DD.MM/skript.docx`, `assets/`)
+- **`avatars`** — display names, ElevenLabs voice labels, HeyGen draft names
+- **`heygen.mode`** — `manual` (recommended) or `auto`
 
 ```yaml
 heygen:
-  mode: manual   # recommended
+  mode: manual
 ```
 
-**Manual (default)** — pipeline stops after ElevenLabs. You finish the video in HeyGen (correct draft look + voice).
+**Manual** — pipeline saves script + MP3; you upload audio in HeyGen.  
+**Auto** — pipeline calls HeyGen API (often wrong framing; not recommended).
 
-**Auto** — pipeline calls HeyGen API with your MP3. Often wrong outfit/framing; use only if you accept that trade-off.
+---
 
-## Daily workflow
+## Output folder
 
-### Run the pipeline
+After a run:
+
+```
+StarTV/03.07/
+  skript.docx
+  assets/
+    ElevenLabs_...mp3
+    Tim_03.07_1080p.mp4    ← you add this after HeyGen
+```
+
+---
+
+## Command reference
+
+All commands support `--config PATH` to use a custom `config.yaml`.
+
+### `starnews run`
+
+Run the pipeline for one article.
 
 ```bash
 starnews run "https://www.gala.de/stars/....html" --date 03.07
+starnews run "URL" --date 03.07 --resume
 ```
 
-Avatar rotation is automatic: Tim → Leon → Chris → Annie → repeat.
+| Option | Description |
+|--------|-------------|
+| `URL` | Gala.de article URL (required) |
+| `--date DD.MM` | Production date, e.g. `03.07` (required) |
+| `--resume` | Reuse cached script and MP3 from a previous run for this date |
+| `--config PATH` | Custom config file |
+
+### `starnews batch`
+
+Run up to **7** jobs in parallel (one date each).
 
 ```bash
-starnews run "URL" --date 03.07 --resume    # reuse script + MP3
-starnews batch -j 03.07 URL1 -j 04.07 URL2   # up to 7 parallel
-starnews web                                 # http://127.0.0.1:8765
+starnews batch \
+  -j 03.07 "https://www.gala.de/....html" \
+  -j 04.07 "https://www.gala.de/....html"
 ```
 
-### Finish in HeyGen (manual mode)
+| Option | Description |
+|--------|-------------|
+| `-j DATE URL` | Repeatable date + URL pair (max 7, unique dates) |
+| `--config PATH` | Custom config file |
 
-The pipeline prints which avatar and MP3 to use. Steps:
+### `starnews status`
 
-1. Open [app.heygen.com](https://app.heygen.com)
-2. Open **your draft** for today's avatar:
-
-   | Avatar | Draft name (in `config.yaml`) |
-   |--------|-------------------------------|
-   | Tim | Tim 02.07 |
-   | Leon | Leo 30.06 |
-   | Chris | Chris_01.07 |
-   | Annie | Annie (update in `config.yaml` when your HeyGen draft name differs) |
-
-3. In the **Script** panel, choose **Upload Audio** (not typed script)
-4. Select the ElevenLabs MP3 from that day's `assets/` folder
-5. Click **Generate** / **Submit**
-6. Download the MP4 and save as `{Avatar}_{date}_1080p.mp4` in the same `assets/` folder  
-   Example: `Tim_03.07_1080p.mp4`
-
-This matches your old workflow: draft look, ElevenLabs voice, green background.
-
-### After that (manual)
-
-1. Find pictures (Google)
-2. Edit in Premiere — replace moderator clip with the HeyGen MP4
-3. Export TV / YT / SM
-4. SwissTransfer + social posts
-
-## Troubleshooting
-
-**`ELEVENLABS_VOICE_* is not set`** — uncomment lines in `~/.starnews/.env`, run `starnews status`.
-
-**Gemini parse error** — re-run the same command; the pipeline retries with stricter formatting. Use `--resume` after a successful script to avoid paying twice.
-
-**Gemini 429** — wait or set `gemini.model: gemini-2.5-flash` in `config.yaml`.
-
-**HeyGen auto mode looks wrong** — set `heygen.mode: manual` and use the steps above.
-
-**Helper commands**
+Show API keys, next avatar in rotation, and configured IDs.
 
 ```bash
 starnews status
-starnews heygen-avatars    # look IDs for auto mode
-starnews heygen-templates  # templates with audio placeholders for auto mode
-starnews heygen-voices     # optional voice override list
+```
+
+### `starnews web`
+
+Local web UI to paste URL + date and run the pipeline.
+
+```bash
+starnews web
+starnews web --port 9000
+```
+
+Open http://127.0.0.1:8765 (default port from `config.yaml`).
+
+### `starnews heygen-avatars`
+
+List HeyGen avatar look IDs (for `heygen.mode: auto`).
+
+```bash
+starnews heygen-avatars
+```
+
+### `starnews heygen-templates`
+
+List templates and whether they accept audio from the API (`[USABLE]`).
+
+```bash
+starnews heygen-templates
+```
+
+### `starnews heygen-voices`
+
+List HeyGen voices (optional override; not needed for manual mode).
+
+```bash
+starnews heygen-voices
+starnews heygen-voices --language German
+```
+
+### `starnews --version`
+
+```bash
+starnews --version
+```
+
+---
+
+## Daily workflow
+
+### 1. Run pipeline
+
+```bash
+starnews run "https://www.gala.de/stars/....html" --date 29.07
+```
+
+### 2. Finish in HeyGen (manual mode)
+
+1. Open [app.heygen.com](https://app.heygen.com)
+2. Open today's avatar draft (names in `config.yaml`)
+3. **Script** panel → **Upload Audio** → pick the MP3 from `assets/`
+4. Generate → save as `{Avatar}_{date}_1080p.mp4` in `assets/`
+
+### 3. Edit & export (manual)
+
+Premiere, pictures, TV/YT/SM exports — unchanged.
+
+---
+
+## Standalone `.exe` / app (advanced)
+
+There is **no pre-built installer** in this repo. Each user needs their own API keys and folder paths, so **share the GitHub link** and the install steps above.
+
+You *can* build a standalone binary with [PyInstaller](https://pyinstaller.org/), but it is **experimental** and must be built on the same OS you run it on:
+
+```bash
+pip install pyinstaller
+cd StarTV-Slopautomation
+
+# macOS / Linux — add-data uses :
+pyinstaller --onefile -n starnews \
+  --add-data "config.yaml:." \
+  --add-data "prompts:prompts" \
+  --add-data "starnews/web/templates:starnews/web/templates" \
+  starnews/__main__.py
+
+# Windows — add-data uses ;
+pyinstaller --onefile -n starnews ^
+  --add-data "config.yaml;." ^
+  --add-data "prompts;prompts" ^
+  --add-data "starnews/web/templates;starnews/web/templates" ^
+  starnews/__main__.py
+```
+
+The exe lands in `dist/starnews` (or `dist/starnews.exe`). You still need:
+
+- `config.yaml` beside the binary (or run from the repo folder)
+- `%USERPROFILE%\.starnews\.env` (Windows) or `~/.starnews/.env` (Mac)
+
+If imports fail at runtime, use `pip install -e .` instead — that is the supported method.
+
+---
+
+## Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| `'starnews' is not recognized` | Re-run `pip install -e .`; on Windows try `py -m starnews status` |
+| `ELEVENLABS_VOICE_* is not set` | Add IDs to `.env`, run `starnews status` |
+| `GEMINI_API_KEY is not set` | Add key to `.env` |
+| Gemini parse error | Re-run; use `--resume` after script succeeded |
+| Gemini 429 | Wait or set `gemini.model: gemini-2.5-flash` in `config.yaml` |
+| Wrong HeyGen look (auto mode) | Set `heygen.mode: manual` |
+
+---
+
+## Project layout
+
+```
+StarTV-Slopautomation/
+  config.yaml          ← paths, avatars, HeyGen mode
+  prompts/             ← Gemini prompt template
+  starnews/            ← Python package
+  pyproject.toml       ← install metadata
+```
+
+User data (not in repo):
+
+```
+~/.starnews/.env       ← API keys
+~/.starnews/state.json ← avatar rotation
+~/.starnews/runs/      ← cached scripts for --resume
 ```
