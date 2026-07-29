@@ -43,4 +43,4 @@ Write-Host ""
 Write-Host "=== Fertig! Starte StarNews... ===" -ForegroundColor Green
 Write-Host "Ordner: $InstallDir"
 Write-Host ""
-& starnews web
+& $Py -m starnews web

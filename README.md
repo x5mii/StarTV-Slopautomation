@@ -21,10 +21,10 @@ Danach: **einen Befehl kopieren → Terminal einfügen → Enter**.
 2. **Alles** markieren, kopieren, ins schwarze Fenster **rechtsklicken** (einfügen), **Enter**:
 
 ```powershell
-git clone -b cursor/starnews-daily-pipeline https://github.com/x5mii/StarTV-Slopautomation.git $HOME\StarTV-Slopautomation; cd $HOME\StarTV-Slopautomation; py -m pip install -e .; starnews web
+git clone -b cursor/starnews-daily-pipeline https://github.com/x5mii/StarTV-Slopautomation.git $HOME\StarTV-Slopautomation; cd $HOME\StarTV-Slopautomation; py -m pip install -e .; py -m starnews web
 ```
 
-> Geht `py` nicht? Ersetze `py` durch `python` und nochmal Enter.
+> Geht `py` nicht? Ersetze **beide** `py` durch `python` und nochmal Enter.
 
 3. **Browser** öffnet sich automatisch
 4. **Einmal einrichten** (nur beim ersten Mal):
@@ -39,7 +39,7 @@ git clone -b cursor/starnews-daily-pipeline https://github.com/x5mii/StarTV-Slop
 2. Kopieren, einfügen, **Enter**:
 
 ```powershell
-cd $HOME\StarTV-Slopautomation; starnews web
+cd $HOME\StarTV-Slopautomation; py -m starnews web
 ```
 
 3. Gala-URL einfügen → Datum → **Pipeline starten**
@@ -54,7 +54,7 @@ cd $HOME\StarTV-Slopautomation; starnews web
 2. **Alles** kopieren, einfügen, **Enter**:
 
 ```bash
-git clone -b cursor/starnews-daily-pipeline https://github.com/x5mii/StarTV-Slopautomation.git ~/StarTV-Slopautomation && cd ~/StarTV-Slopautomation && python3 -m pip install -e . && starnews web
+git clone -b cursor/starnews-daily-pipeline https://github.com/x5mii/StarTV-Slopautomation.git ~/StarTV-Slopautomation && cd ~/StarTV-Slopautomation && python3 -m pip install -e . && python3 -m starnews web
 ```
 
 3. **Browser** öffnet sich
@@ -69,7 +69,7 @@ git clone -b cursor/starnews-daily-pipeline https://github.com/x5mii/StarTV-Slop
 2. Kopieren, einfügen, **Enter**:
 
 ```bash
-cd ~/StarTV-Slopautomation && starnews web
+cd ~/StarTV-Slopautomation && python3 -m starnews web
 ```
 
 ---
@@ -121,7 +121,7 @@ Rotation: Tim → Leon → Chris → Annie → …
 |--------|--------|
 | `'git' is not recognized` | Git installieren (Tabelle oben) |
 | `'py' / 'python3' is not recognized` | Python installieren, Terminal neu öffnen |
-| `'starnews' is not recognized` | Nochmal Install-Befehl ausführen |
+| `'starnews' is not recognized` | Ignorieren — immer `py -m starnews web` (Windows) bzw. `python3 -m starnews web` (Mac) nutzen |
 | Setup: secrets fehlen | `team-secrets.env` laden oder einfügen |
 | Falscher Ordner | `config.local.yaml` im App-Ordner löschen, neu starten |
 
@@ -140,8 +140,8 @@ Rotation: Tim → Leon → Chris → Annie → …
 
 **Alle Befehle:**
 
-| Befehl | Beschreibung |
-|--------|--------------|
-| `starnews web` | Browser-Oberfläche |
-| `starnews run "URL" --date 29.07` | Ein Artikel |
-| `starnews status` | Einstellungen prüfen |
+| Befehl (Windows) | Befehl (Mac) | Beschreibung |
+|------------------|--------------|--------------|
+| `py -m starnews web` | `python3 -m starnews web` | Browser-Oberfläche |
+| `py -m starnews run "URL" --date 29.07` | `python3 -m starnews run "URL" --date 29.07` | Ein Artikel |
+| `py -m starnews status` | `python3 -m starnews status` | Einstellungen prüfen |
