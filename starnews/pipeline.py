@@ -220,7 +220,9 @@ def run_pipeline_tracked(
     _reset_run_state()
     _run_state.status = "running"
     try:
-        result = run_pipeline(url, date_str, settings=settings, on_progress=_log)
+        # Do not pass _log here — it takes (msg, on_progress), but callbacks
+        # must be Callable[[str], None]. _log still updates _run_state itself.
+        result = run_pipeline(url, date_str, settings=settings, on_progress=None)
         _run_state.status = "completed"
         _run_state.result = result.to_dict()
         return result
