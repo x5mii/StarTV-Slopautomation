@@ -4,7 +4,12 @@ from pathlib import Path
 
 import click
 
-from starnews.config import load_settings
+from starnews.config import (
+    default_config_local_path,
+    is_setup_complete,
+    load_settings,
+    save_config_local,
+)
 from starnews.pipeline import run_batch, run_pipeline, save_run_manifest
 from starnews.rotation import load_state, next_avatar
 
@@ -365,6 +370,65 @@ def heygen_avatars(config_path: Path | None) -> None:
 
 @main.command()
 @click.option(
+    "--config",
+    "config_path",
+    type=click.Path(exists=True, path_type=Path),
+    default=None,
+    help="Optional path to config.yaml",
+)
+def setup(config_path: Path | None) -> None:
+    """First-time setup — saves API keys to config.local.yaml (no .env file needed)."""
+    settings = load_settings(config_path)
+    target = default_config_local_path()
+
+    click.echo("StarNews setup")
+    click.echo("=" * 40)
+    click.echo(f"Settings file: {target}")
+    click.echo("")
+
+    startv_root = click.prompt(
+        "StarTV output folder",
+        default=str(settings.startv_root),
+    )
+    gemini_key = click.prompt(
+        "Gemini API key",
+        default=settings.gemini_api_key or None,
+        hide_input=True,
+        show_default=False,
+    )
+    elevenlabs_key = click.prompt(
+        "ElevenLabs API key",
+        default=settings.elevenlabs_api_key or None,
+        hide_input=True,
+        show_default=False,
+    )
+
+    voices: dict[str, str] = {}
+    for key in settings.avatar_rotation:
+        avatar = settings.avatars[key]
+        label = f"{avatar.display_name} voice ID ({avatar.elevenlabs_voice_name})"
+        voices[key] = click.prompt(
+            label,
+            default=avatar.elevenlabs_voice_id or None,
+            show_default=bool(avatar.elevenlabs_voice_id),
+        )
+
+    data = {
+        "paths": {"startv_root": startv_root.strip()},
+        "api_keys": {
+            "gemini": gemini_key.strip(),
+            "elevenlabs": elevenlabs_key.strip(),
+        },
+        "elevenlabs_voices": voices,
+    }
+
+    save_config_local(data, target)
+    click.echo(f"\nSaved {target}")
+    click.echo("Run: starnews web   (or double-click Start-StarNews)")
+
+
+@main.command()
+@click.option(
     "--host",
     default=None,
     help="Bind host (default from config.yaml)",
@@ -384,13 +448,25 @@ def heygen_avatars(config_path: Path | None) -> None:
 )
 def web(host: str | None, port: int | None, config_path: Path | None) -> None:
     """Start the local web UI on localhost:8765."""
+    import webbrowser
+
     from starnews.web.app import create_app
 
     settings = load_settings(config_path)
     app = create_app(settings)
     bind_host = host or settings.web_host
     bind_port = port or settings.web_port
-    click.echo(f"StarNews web UI: http://{bind_host}:{bind_port}")
+    url = f"http://{bind_host}:{bind_port}"
+    click.echo(f"StarNews web UI: {url}")
+    if not is_setup_complete(settings):
+        click.echo("Setup required — open the page and enter API keys.")
+        path = "/setup"
+    else:
+        path = "/"
+    try:
+        webbrowser.open(f"{url}{path}")
+    except Exception:
+        pass
     app.run(host=bind_host, port=bind_port, debug=False, threaded=True)
 
 

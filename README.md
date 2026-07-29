@@ -8,6 +8,53 @@ Works on **macOS** and **Windows** (Python 3.10+).
 
 ---
 
+## Easy install (for teammates — no `.env` file)
+
+**You do not need to edit a `.env` file.** Use one of these:
+
+### Option A — Zip folder (easiest, no Python for friends)
+
+1. **You** build once on your Mac or PC:
+   ```bash
+   # macOS
+   ./scripts/build-release.sh
+   # Windows (PowerShell)
+   .\scripts\build-release.ps1
+   ```
+2. Copy `config.local.example.yaml` → `config.local.yaml` in the `release/StarNews-*` folder and paste your **team API keys + voice IDs** (same ElevenLabs account for everyone).
+3. Zip the folder and send it privately (WhatsApp, Drive, etc.) — **not** via public GitHub.
+4. **Friend** unzips and double-clicks:
+   - Mac: `Start-StarNews.command`
+   - Windows: `Start-StarNews.bat`
+5. Browser opens. If setup is missing, they only enter their **output folder** (or you pre-fill it). Then: paste Gala URL → start.
+
+### Option B — One setup file instead of `.env`
+
+```bash
+cp config.local.example.yaml config.local.yaml
+# edit config.local.yaml (keys + voices in one place)
+starnews web
+```
+
+Or run the guided wizard:
+
+```bash
+starnews setup
+starnews web
+```
+
+The web UI also shows a **setup page** on first launch if keys are missing.
+
+| Old way | New way |
+|---------|---------|
+| `~/.starnews/.env` | `config.local.yaml` next to the app (or `~/.starnews/config.local.yaml`) |
+| Manual nano/notepad | `starnews setup` or browser form |
+| `pip install` + terminal | Zip + double-click launcher |
+
+`.env` still works if you already use it — `config.local.yaml` takes priority.
+
+---
+
 ## What it does
 
 | Step | Tool | Automated? |
@@ -91,16 +138,38 @@ starnews status
 
 ---
 
-## API keys (`.env`)
+## API keys
+
+**Recommended:** `config.local.yaml` (see `config.local.example.yaml`) — one file, no `.env` syntax.
+
+**Legacy:** `~/.starnews/.env` still supported.
 
 Create a file:
 
-| OS | Path |
-|----|------|
-| macOS / Linux | `~/.starnews/.env` |
-| Windows | `%USERPROFILE%\.starnews\.env` |
+| Method | Path |
+|--------|------|
+| **Easy (recommended)** | `config.local.yaml` next to the app |
+| macOS / Linux legacy | `~/.starnews/.env` |
+| Windows legacy | `%USERPROFILE%\.starnews\.env` |
 
-Example (fill in your own keys — **never commit this file**):
+**config.local.yaml** example (fill in your own keys — **never commit this file**):
+
+```yaml
+paths:
+  startv_root: /Users/YOURNAME/Documents/StarTV
+
+api_keys:
+  gemini: your_gemini_key
+  elevenlabs: your_elevenlabs_key
+
+elevenlabs_voices:
+  tim: your_tim_voice_id
+  leon: your_leon_voice_id
+  chris: your_chris_voice_id
+  annie: your_annie_voice_id
+```
+
+**Legacy `.env`** example:
 
 ```env
 GEMINI_API_KEY=your_gemini_key
@@ -156,6 +225,14 @@ StarTV/03.07/
 ## Command reference
 
 All commands support `--config PATH` to use a custom `config.yaml`.
+
+### `starnews setup`
+
+First-time wizard — saves `config.local.yaml` (no `.env` needed).
+
+```bash
+starnews setup
+```
 
 ### `starnews run`
 
@@ -261,11 +338,26 @@ Premiere, pictures, TV/YT/SM exports — unchanged.
 
 ---
 
-## Standalone `.exe` / app (advanced)
+## Standalone app for teammates (advanced)
 
-There is **no pre-built installer** in this repo. Each user needs their own API keys and folder paths, so **share the GitHub link** and the install steps above.
+There is **no pre-built installer on GitHub** (API keys must stay private). **You** build a folder and zip it for your team:
 
-You *can* build a standalone binary with [PyInstaller](https://pyinstaller.org/), but it is **experimental** and must be built on the same OS you run it on:
+```bash
+# macOS
+./scripts/build-release.sh
+# Windows
+.\scripts\build-release.ps1
+```
+
+Output: `release/StarNews-macOS/` or `release/StarNews-Windows/` containing:
+
+- `starnews` / `starnews.exe`
+- `config.yaml`
+- `Start-StarNews.command` / `Start-StarNews.bat`
+
+Before zipping, add **`config.local.yaml`** with team keys (copy from `config.local.example.yaml`). Friends only change `startv_root` if needed.
+
+Manual PyInstaller (if you prefer):
 
 ```bash
 pip install pyinstaller
